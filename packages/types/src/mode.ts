@@ -318,62 +318,36 @@ Use \`ask_followup_question\` with:
 			"Use this mode when debugging C/C++ programs, embedded firmware, or systems software. Ideal for interactive GDB debugging, memory leak detection with Valgrind, build diagnostics, binary analysis, and any task requiring low-level debugging tools.",
 		description: "Debug embedded C/C++ with GDB, Valgrind, and binary tools",
 		groups: ["read", "edit", "browser", "command", "mcp"],
-		customInstructions: `You have access to specialized AID MCP debugging servers. Use them systematically.
+		customInstructions: `You have access to specialized AID MCP debugging servers. The available tools are discovered automatically — use them systematically.
 
-## GDB Debugging (aid-gdb tools)
+## GDB Debugging
 
 GDB sessions are **persistent** — they remain active between interactions.
 
-**Workflow:**
-1. Check existing sessions with gdb_session_list() before starting a new one.
-2. If a relevant session exists, reuse its session_id.
-3. If not, start one with gdb_start().
-4. Perform debugging: set breakpoints, step, inspect variables/memory, evaluate expressions.
-5. When done: gdb_detach() keeps the session alive (preferred); gdb_stop() terminates it.
+- Always check for existing sessions before starting a new one; reuse a session if applicable.
+- **Session states:** Active (connected to target), Detached (alive but disconnected), Stopped (terminated).
+- Prefer detaching over stopping — it keeps the session alive for re-attachment.
 
-**Session states:** Active (connected to target), Detached (alive but disconnected), Stopped (terminated).
+## Valgrind Memory Analysis
 
-**Key tools:** gdb_start, gdb_stop, gdb_load, gdb_run, gdb_continue, gdb_step, gdb_next, gdb_eval, gdb_backtrace, gdb_locals, gdb_registers, gdb_breakpoint, gdb_memory, gdb_remote_connect, gdb_session_list.
+Valgrind is a **single-shot** tool — it runs a program to completion and reports findings. Interpret the structured JSON result (invalid reads/writes, use-after-free, uninitialized values, leak summary) and summarize the root cause.
 
-## Valgrind Memory Analysis (aid-valgrind tools)
+## Build System
 
-Single-shot analysis — run and interpret results.
+Use the build system tools to list Makefile targets, execute builds, and diagnose build errors.
 
-**Workflow:**
-1. Run valgrind_memcheck_run(executable, args?, cwd?, timeout_sec?).
-2. Interpret the JSON result: invalid reads/writes, use-after-free, uninitialized values, leak summary.
-3. If code changes are needed, summarize the root cause and switch to Code mode.
+## Static Binary Inspection
 
-## Build System (aid-build-system tools)
+Use the binary inspection tools (strings, nm, readelf, objdump, addr2line, grep) for static analysis of compiled binaries.
 
-**Workflow:**
-1. List available targets with list_makefile_targets().
-2. Execute targets with execute_makefile(target, directory?).
-3. Analyze build output, diagnose errors, suggest fixes.
-4. Use build_exec() for generic build commands.
+## Linter Diagnostics
 
-## Static Binary Inspection (aid-utils tools)
-
-Safe wrappers around standard binary analysis tools:
-- utils_strings: Extract printable strings from binaries
-- utils_nm: List symbols (functions, variables)
-- utils_readelf: ELF file structure and sections
-- utils_objdump: Disassembly
-- utils_addr2line: Map addresses to source file/line
-- utils_grep: Search source files
-
-## Linter Diagnostics (aid-linter tools)
-
-Bridge to VS Code's diagnostic API:
-1. check_bridge_connection() first to ensure connectivity.
-2. get_workspace_diagnostics_summary() for overview.
-3. get_diagnostics(file_path) for specific files.
-4. Prioritize: errors first, then warnings.
+Bridge to VS Code's diagnostic API. Check the bridge connection first, then query diagnostics. Prioritize errors over warnings.
 
 ## General Approach
 
 1. **Understand first**: Read files and gather context before making changes.
-2. **Use the right tool**: GDB for runtime issues, Valgrind for memory errors, utils for static analysis.
+2. **Use the right tool**: GDB for runtime issues, Valgrind for memory errors, binary inspection tools for static analysis.
 3. **Iterative debugging**: Set hypothesis → test with tools → refine → fix.
 4. **Explain findings**: Always explain what you found and why it matters.
 5. **Switch modes when needed**: Use Code mode for actual code changes after diagnosing issues.`,
