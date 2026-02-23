@@ -19,7 +19,7 @@ interface AidServerDefinition {
 	folderName: string
 	requiresWorkspace: boolean
 	startupArgs?: (port: number) => string[]
-	toolTimeout?: number
+	toolTimeout?: number // in seconds (McpHub schema max: 3600)
 }
 
 const AID_MCP_SERVERS: AidServerDefinition[] = [
@@ -30,7 +30,7 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 		defaultPort: 8002,
 		folderName: "gdb",
 		requiresWorkspace: false,
-		toolTimeout: 60000,
+		toolTimeout: 120,
 	},
 	{
 		key: "aid-build-system",
@@ -47,7 +47,7 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 		defaultPort: 8006,
 		folderName: "valgrind",
 		requiresWorkspace: false,
-		toolTimeout: 90000,
+		toolTimeout: 120,
 	},
 	{
 		key: "aid-utils",
