@@ -94,7 +94,7 @@ export type McpServer = {
 	resourceTemplates?: McpResourceTemplate[]
 	disabled?: boolean
 	timeout?: number
-	source?: "global" | "project"
+	source?: "global" | "project" | "builtin" // kilocode_change: add builtin source for AID MCP servers
 	projectPath?: string
 	instructions?: string
 	authStatus?: McpAuthStatus // kilocode_change: OAuth authentication status
