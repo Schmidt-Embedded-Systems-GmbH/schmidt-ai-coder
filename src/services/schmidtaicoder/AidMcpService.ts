@@ -278,6 +278,7 @@ export class AidMcpService implements vscode.Disposable {
 		if (workspaceRoot) {
 			env.AID_WORKSPACE_ROOT = workspaceRoot
 		}
+		env.FASTMCP_STATELESS_HTTP = "true"
 
 		const child = spawn("uv", args, {
 			cwd: workingDir,
