@@ -1669,7 +1669,10 @@ export const webviewMessageHandler = async (
 			break
 		// kilocode_change begin
 		case "openGlobalKeybindings":
-			vscode.commands.executeCommand("workbench.action.openGlobalKeybindings", message.text ?? "schmidt-ai-coder.")
+			vscode.commands.executeCommand(
+				"workbench.action.openGlobalKeybindings",
+				message.text ?? "schmidt-ai-coder.",
+			)
 			break
 		case "showSystemNotification":
 			const isSystemNotificationsEnabled = getGlobalState("systemNotificationsEnabled") ?? true
@@ -2145,7 +2148,9 @@ export const webviewMessageHandler = async (
 			)
 
 			if (answer === githubIssuesText) {
-				await vscode.env.openExternal(vscode.Uri.parse("https://github.com/schmidt-embedded-systems/schmidt-ai-coder/issues"))
+				await vscode.env.openExternal(
+					vscode.Uri.parse("https://github.com/schmidt-embedded-systems/schmidt-ai-coder/issues"),
+				)
 			} else if (answer === discordText) {
 				await vscode.env.openExternal(vscode.Uri.parse("https://discord.gg/fxrhCFGhkP"))
 			} else if (answer === customerSupport) {
@@ -2734,7 +2739,7 @@ export const webviewMessageHandler = async (
 					// Import the mode with the specified source level
 					const result = await provider.customModesManager.importModeWithRules(
 						yamlContent,
-						message.source || "project", // Default to project if not specified
+						message.source === "global" ? "global" : "project", // kilocode_change: narrow to valid import sources
 					)
 
 					if (result.success) {
@@ -2944,7 +2949,10 @@ export const webviewMessageHandler = async (
 					headers["X-KILOCODE-TESTER"] = "SUPPRESS"
 				}
 
-				const url = getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", kilocodeToken)
+				const url = getKiloUrlFromToken(
+					"https://api.schmidt-embedded-systems.de/ai/api/profile/balance",
+					kilocodeToken,
+				)
 				const response = await axios.get(url, { headers })
 				provider.postMessageToWebview({
 					type: "balanceDataResponse", // New response type
