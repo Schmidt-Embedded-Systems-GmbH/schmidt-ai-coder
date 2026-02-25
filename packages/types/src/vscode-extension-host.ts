@@ -1021,7 +1021,7 @@ export interface WebviewMessage {
 	modeConfig?: ModeConfig
 	timeout?: number
 	payload?: WebViewMessagePayload
-	source?: "global" | "project"
+	source?: "global" | "project" | "builtin" // kilocode_change: add builtin source for AID MCP servers
 	requestId?: string
 	ids?: string[]
 	excludeFavorites?: boolean // kilocode_change: For batch delete to exclude favorited tasks

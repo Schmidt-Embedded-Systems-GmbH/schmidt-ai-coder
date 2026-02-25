@@ -7,6 +7,7 @@ import {
 	type ExtensionMessage,
 	type ClineAskUseMcpServer,
 	type McpExecutionStatus,
+	type McpServer, // kilocode_change: allow builtin MCP server source
 	mcpExecutionStatusSchema,
 } from "@roo-code/types"
 
@@ -25,14 +26,7 @@ interface McpExecutionProps {
 	serverName?: string
 	toolName?: string
 	isArguments?: boolean
-	server?: {
-		tools?: Array<{
-			name: string
-			description?: string
-			alwaysAllow?: boolean
-		}>
-		source?: "global" | "project"
-	}
+	server?: McpServer
 	useMcpServer?: ClineAskUseMcpServer
 	alwaysAllowMcp?: boolean
 	initiallyExpanded?: boolean // kilocode_change: For Storybook stories only

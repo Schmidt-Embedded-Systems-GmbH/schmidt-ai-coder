@@ -84,6 +84,19 @@ async function main() {
 						buildDir,
 					)
 
+					// kilocode_change: Copy AID MCP servers (Python) into dist for bundling
+					copyPaths(
+						[
+							["../mcp-servers/gdb", "aid-mcp-servers/gdb"],
+							["../mcp-servers/build_system", "aid-mcp-servers/build_system"],
+							["../mcp-servers/valgrind", "aid-mcp-servers/valgrind"],
+							["../mcp-servers/utils", "aid-mcp-servers/utils"],
+							["../mcp-servers/linter", "aid-mcp-servers/linter"],
+						],
+						srcDir,
+						distDir,
+					)
+
 					// Copy walkthrough files to dist directory
 					copyPaths([["walkthrough", "walkthrough"]], srcDir, distDir)
 

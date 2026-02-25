@@ -1,6 +1,6 @@
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
-import type { McpTool } from "@roo-code/types"
+import type { McpServer, McpTool } from "@roo-code/types" // kilocode_change: allow builtin MCP server source
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
@@ -9,7 +9,7 @@ import { StandardTooltip, ToggleSwitch } from "@/components/ui"
 type McpToolRowProps = {
 	tool: McpTool
 	serverName?: string
-	serverSource?: "global" | "project"
+	serverSource?: McpServer["source"] // kilocode_change: includes "builtin"
 	alwaysAllowMcp?: boolean
 	isInChatContext?: boolean
 }

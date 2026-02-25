@@ -55,6 +55,8 @@ import { ManagedIndexer } from "./services/code-index/managed/ManagedIndexer" //
 import { flushModels, getModels, initializeModelCacheRefresh, refreshModels } from "./api/providers/fetchers/modelCache"
 import { kilo_initializeSessionManager } from "./shared/schmidtaicoder/cli-sessions/extension/session-manager-utils" // kilocode_change
 import { fetchKilocodeNotificationsOnStartup } from "./core/schmidtaicoder/webview/webviewMessageHandlerUtils" // kilocode_change
+import { AidMcpService } from "./services/schmidtaicoder/AidMcpService" // kilocode_change
+import { DiagnosticsBridge } from "./services/schmidtaicoder/DiagnosticsBridge" // kilocode_change
 
 // kilocode_change start
 async function findKilocodeTokenFromAnyProfile(provider: ClineProvider): Promise<string | undefined> {
@@ -91,6 +93,8 @@ async function findKilocodeTokenFromAnyProfile(provider: ClineProvider): Promise
 let outputChannel: vscode.OutputChannel
 let extensionContext: vscode.ExtensionContext
 let cloudService: CloudService | undefined
+let aidMcpService: AidMcpService | undefined // kilocode_change
+let diagnosticsBridge: DiagnosticsBridge | undefined // kilocode_change
 
 let authStateChangedHandler: ((data: { state: AuthState; previousState: AuthState }) => Promise<void>) | undefined
 let settingsUpdatedHandler: (() => void) | undefined
@@ -220,6 +224,32 @@ export async function activate(context: vscode.ExtensionContext) {
 	// kilocode_change start: Initialize ManagedIndexer
 	const managedIndexer = new ManagedIndexer(contextProxy)
 	context.subscriptions.push(managedIndexer)
+	// kilocode_change end
+
+	// kilocode_change start: Initialize diagnostics bridge + AID MCP servers
+	try {
+		// Start the diagnostics WebSocket bridge first (port 8999) — the linter MCP server connects to it
+		diagnosticsBridge = DiagnosticsBridge.getInstance(outputChannel)
+		context.subscriptions.push(diagnosticsBridge)
+		void diagnosticsBridge.start().catch((error) => {
+			outputChannel.appendLine(
+				`[Diagnostics Bridge] Failed to start: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		})
+
+		// Then start AID MCP servers (Python/FastMCP debugging tools)
+		aidMcpService = AidMcpService.getInstance(context, outputChannel)
+		context.subscriptions.push(aidMcpService)
+		void aidMcpService.startServers(provider).catch((error) => {
+			outputChannel.appendLine(
+				`[AID MCP] Background startup failed: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		})
+	} catch (error) {
+		outputChannel.appendLine(
+			`[AID MCP] Failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
 	// kilocode_change end
 
 	// Initialize Roo Code Cloud service.
@@ -628,6 +658,27 @@ export async function deactivate() {
 	if (bridge) {
 		await bridge.disconnect()
 	}
+
+	// kilocode_change start: stop AID MCP servers and diagnostics bridge before McpHub cleanup
+	if (aidMcpService) {
+		try {
+			await aidMcpService.stopServers()
+		} catch (error) {
+			outputChannel.appendLine(
+				`[AID MCP] Error during shutdown: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	}
+	if (diagnosticsBridge) {
+		try {
+			await diagnosticsBridge.stop()
+		} catch (error) {
+			outputChannel.appendLine(
+				`[Diagnostics Bridge] Error during shutdown: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	}
+	// kilocode_change end
 
 	await McpServerManager.cleanup(extensionContext)
 	TelemetryService.instance.shutdown()

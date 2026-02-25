@@ -34,3 +34,6 @@
 
 # Include .env file for telemetry
 !.env
+
+# Include bundled AID MCP servers (Python)
+!dist/aid-mcp-servers/**

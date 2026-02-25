@@ -61,6 +61,9 @@ export type DisconnectedMcpConnection = {
 
 export type McpConnection = ConnectedMcpConnection | DisconnectedMcpConnection
 
+// kilocode_change: type alias supports builtin source for AID MCP servers
+export type McpSource = "global" | "project" | "builtin"
+
 // Enum for disable reasons
 export enum DisableReason {
 	MCP_DISABLED = "mcpDisabled",
@@ -195,9 +198,21 @@ export class McpHub {
 	private static readonly INITIAL_RECONNECT_DELAY_MS = 1000
 	private static readonly MAX_RECONNECT_DELAY_MS = 30000
 	// kilocode_change end
+	// kilocode_change start - Diagnostic output channel for MCP connection issues
+	private readonly diagnosticsChannel: vscode.OutputChannel
+	private logDiag(serverName: string, event: string, detail?: string): void {
+		const ts = new Date().toISOString()
+		const msg = `[${ts}] [${serverName}] ${event}${detail ? `: ${detail}` : ""}`
+		this.diagnosticsChannel.appendLine(msg)
+	}
+	// kilocode_change end
 
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
+		// kilocode_change start - Eagerly create diagnostics channel so it is always visible
+		this.diagnosticsChannel = vscode.window.createOutputChannel("Builtin MCP Diagnostics")
+		this.logDiag("McpHub", "init", "diagnostics channel created")
+		// kilocode_change end
 		// kilocode_change start - MCP OAuth Authorization
 		this.initializeOAuthService()
 		// kilocode_change end
@@ -340,7 +355,7 @@ export class McpHub {
 	 * @param source The server source (global or project)
 	 * @returns Promise<void>
 	 */
-	async initiateOAuthSignIn(serverName: string, source?: "global" | "project"): Promise<void> {
+	async initiateOAuthSignIn(serverName: string, source?: McpSource): Promise<void> {
 		const connection = this.findConnection(serverName, source)
 		if (!connection) {
 			throw new Error(`Server ${serverName} not found`)
@@ -515,7 +530,7 @@ export class McpHub {
 	 * @param serverName The name of the server to reconnect
 	 * @param source The server source (global or project)
 	 */
-	private scheduleReconnect(serverName: string, source: "global" | "project"): void {
+	private scheduleReconnect(serverName: string, source: McpSource): void {
 		const key = `${source}-${serverName}`
 
 		// Don't schedule if already scheduled or if hub is disposed
@@ -527,6 +542,7 @@ export class McpHub {
 
 		// Check if we've exceeded max attempts
 		if (attempts >= McpHub.MAX_RECONNECT_ATTEMPTS) {
+			this.logDiag(serverName, "reconnect-exhausted", `gave up after ${McpHub.MAX_RECONNECT_ATTEMPTS} attempts`)
 			console.log(
 				`Max reconnect attempts (${McpHub.MAX_RECONNECT_ATTEMPTS}) reached for "${serverName}", giving up`,
 			)
@@ -540,6 +556,13 @@ export class McpHub {
 			McpHub.MAX_RECONNECT_DELAY_MS,
 		)
 
+		// kilocode_change start - diagnostic logging
+		this.logDiag(
+			serverName,
+			"scheduleReconnect",
+			`attempt=${attempts + 1}/${McpHub.MAX_RECONNECT_ATTEMPTS}, delay=${delayMs}ms, source=${source}`,
+		)
+		// kilocode_change end
 		console.log(`Scheduling reconnect for "${serverName}" in ${delayMs}ms (attempt ${attempts + 1})`)
 
 		const timer = setTimeout(async () => {
@@ -549,6 +572,11 @@ export class McpHub {
 			const connection = this.findConnection(serverName, source)
 			if (!connection || connection.server.status !== "disconnected" || connection.server.disabled) {
 				// Server is no longer disconnected or was disabled, clear attempts
+				this.logDiag(
+					serverName,
+					"reconnect-skipped",
+					`status=${connection?.server.status ?? "no-connection"}, disabled=${connection?.server.disabled}`,
+				)
 				this.reconnectAttempts.delete(key)
 				return
 			}
@@ -565,12 +593,15 @@ export class McpHub {
 			this.reconnectAttempts.set(key, attempts + 1)
 
 			try {
+				this.logDiag(serverName, "reconnecting", `attempt=${attempts + 1}`)
 				console.log(`Auto-reconnecting to "${serverName}" (attempt ${attempts + 1})`)
-				await this.restartConnection(serverName, source)
+				// kilocode_change: silent auto-reconnect — no user-facing notifications
+				await this.restartConnection(serverName, source, true)
 
 				// Check if reconnection was successful
 				const updatedConnection = this.findConnection(serverName, source)
 				if (updatedConnection?.server.status === "connected") {
+					this.logDiag(serverName, "reconnected-ok", `attempt=${attempts + 1}`)
 					console.log(`Successfully reconnected to "${serverName}"`)
 					this.reconnectAttempts.delete(key)
 				} else {
@@ -592,7 +623,7 @@ export class McpHub {
 	 * @param serverName The name of the server
 	 * @param source The server source (global or project)
 	 */
-	private cancelReconnect(serverName: string, source: "global" | "project"): void {
+	private cancelReconnect(serverName: string, source: McpSource): void {
 		const key = `${source}-${serverName}`
 		const timer = this.reconnectTimers.get(key)
 		if (timer) {
@@ -608,7 +639,7 @@ export class McpHub {
 	 * @param serverName The name of the server
 	 * @param source The server source (global or project)
 	 */
-	private resetReconnectAttempts(serverName: string, source: "global" | "project"): void {
+	private resetReconnectAttempts(serverName: string, source: McpSource): void {
 		const key = `${source}-${serverName}`
 		this.reconnectAttempts.delete(key)
 	}
@@ -730,7 +761,7 @@ export class McpHub {
 	/**
 	 * Debounced wrapper for handling config file changes
 	 */
-	private debounceConfigChange(filePath: string, source: "global" | "project"): void {
+	private debounceConfigChange(filePath: string, source: McpSource): void {
 		// Skip processing if this is a programmatic update to prevent unnecessary server restarts
 		if (this.isProgrammaticUpdate) {
 			return
@@ -753,7 +784,7 @@ export class McpHub {
 		this.configChangeDebounceTimers.set(key, timer)
 	}
 
-	private async handleConfigFileChange(filePath: string, source: "global" | "project"): Promise<void> {
+	private async handleConfigFileChange(filePath: string, source: McpSource): Promise<void> {
 		try {
 			const content = await fs.readFile(filePath, "utf-8")
 			let config: any
@@ -975,7 +1006,7 @@ export class McpHub {
 		this.disposables.push(vscode.Disposable.from(changeDisposable, createDisposable, this.settingsWatcher))
 	}
 
-	private async initializeMcpServers(source: "global" | "project"): Promise<void> {
+	private async initializeMcpServers(source: McpSource): Promise<void> {
 		try {
 			const configPath =
 				source === "global" ? await this.getMcpSettingsFilePath() : await this.getProjectMcpPath()
@@ -1083,7 +1114,7 @@ export class McpHub {
 	private createPlaceholderConnection(
 		name: string,
 		config: z.infer<typeof ServerConfigSchema>,
-		source: "global" | "project",
+		source: McpSource,
 		reason: DisableReason,
 	): DisconnectedMcpConnection {
 		return {
@@ -1118,8 +1149,11 @@ export class McpHub {
 	private async connectToServer(
 		name: string,
 		config: z.infer<typeof ServerConfigSchema>,
-		source: "global" | "project" = "global",
+		source: McpSource = "global",
 	): Promise<void> {
+		// kilocode_change start - diagnostic logging
+		this.logDiag(name, "connectToServer", `source=${source}, type=${config.type ?? "stdio"}`)
+		// kilocode_change end
 		// Remove existing connection if it exists with the same source
 		await this.deleteConnection(name, source)
 
@@ -1267,6 +1301,11 @@ export class McpHub {
 
 				// Set up Streamable HTTP specific error handling
 				transport.onerror = async (error) => {
+					const errorDetail =
+						error instanceof Error ? `${error.message}\n${error.stack ?? "(no stack)"}` : String(error)
+					// kilocode_change start - diagnostic logging
+					this.logDiag(name, "transport.onerror", errorDetail)
+					// kilocode_change end
 					console.error(`Transport error for "${name}" (streamable-http):`, error)
 					const connection = this.findConnection(name, source)
 					if (connection) {
@@ -1279,6 +1318,9 @@ export class McpHub {
 				}
 
 				transport.onclose = async () => {
+					// kilocode_change start - diagnostic logging
+					this.logDiag(name, "transport.onclose", `source=${source}`)
+					// kilocode_change end
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						connection.server.status = "disconnected"
@@ -1425,6 +1467,11 @@ export class McpHub {
 
 			// Initial fetch of tools and resources
 			await this.fetchAvailableServerCapabilities(name, source) // kilocode_change: logic moved into method
+
+			// kilocode_change start - diagnostic logging
+			const toolCount = connection.server.tools?.length ?? 0
+			this.logDiag(name, "connected", `source=${source}, tools=${toolCount}`)
+			// kilocode_change end
 		} catch (error) {
 			// kilocode_change start - MCP OAuth Authorization: Handle 401 errors
 			// Check if this is an HTTP-based transport and if the error indicates OAuth is required
@@ -1462,6 +1509,10 @@ export class McpHub {
 				connection.server.status = "disconnected"
 				this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
 			}
+			// kilocode_change start - diagnostic logging
+			const errMsg = error instanceof Error ? error.message : String(error)
+			this.logDiag(name, "connect-failed", `source=${source}, error=${errMsg}`)
+			// kilocode_change end
 			throw error
 		}
 	}
@@ -1499,7 +1550,7 @@ export class McpHub {
 	 * @param source Optional source to filter by (global or project)
 	 * @returns The matching connection or undefined if not found
 	 */
-	private findConnection(serverName: string, source?: "global" | "project"): McpConnection | undefined {
+	private findConnection(serverName: string, source?: McpSource): McpConnection | undefined {
 		// If source is specified, only find servers with that source
 		if (source !== undefined) {
 			return this.connections.find((conn) => conn.server.name === serverName && conn.server.source === source)
@@ -1512,7 +1563,13 @@ export class McpHub {
 		)
 		if (projectConn) return projectConn
 
-		// If no project server is found, look for global servers
+		// kilocode_change: check builtin servers before global
+		const builtinConn = this.connections.find(
+			(conn) => conn.server.name === serverName && conn.server.source === "builtin",
+		)
+		if (builtinConn) return builtinConn
+
+		// If no project or builtin server is found, look for global servers
 		return this.connections.find(
 			(conn) => conn.server.name === serverName && (conn.server.source === "global" || !conn.server.source),
 		)
@@ -1524,7 +1581,7 @@ export class McpHub {
 	 * @param serverName The name of the server to find
 	 * @param source Optional source to filter by (global or project)
 	 */
-	private async fetchAvailableServerCapabilities(serverName: string, source?: "global" | "project") {
+	private async fetchAvailableServerCapabilities(serverName: string, source?: McpSource) {
 		// Use the helper method to find the connection
 		const connection = this.findConnection(serverName, source)
 
@@ -1557,7 +1614,7 @@ export class McpHub {
 		return this.sanitizedNameRegistry.get(sanitizedServerName) ?? null
 	}
 
-	private async fetchToolsList(serverName: string, source?: "global" | "project"): Promise<McpTool[]> {
+	private async fetchToolsList(serverName: string, source?: McpSource): Promise<McpTool[]> {
 		try {
 			// Use the helper method to find the connection
 			const connection = this.findConnection(serverName, source)
@@ -1621,7 +1678,7 @@ export class McpHub {
 		}
 	}
 
-	private async fetchResourcesList(serverName: string, source?: "global" | "project"): Promise<McpResource[]> {
+	private async fetchResourcesList(serverName: string, source?: McpSource): Promise<McpResource[]> {
 		try {
 			const connection = this.findConnection(serverName, source)
 			if (!connection || connection.type !== "connected") {
@@ -1643,10 +1700,7 @@ export class McpHub {
 		}
 	}
 
-	private async fetchResourceTemplatesList(
-		serverName: string,
-		source?: "global" | "project",
-	): Promise<McpResourceTemplate[]> {
+	private async fetchResourceTemplatesList(serverName: string, source?: McpSource): Promise<McpResourceTemplate[]> {
 		try {
 			const connection = this.findConnection(serverName, source)
 			if (!connection || connection.type !== "connected") {
@@ -1671,7 +1725,7 @@ export class McpHub {
 		}
 	}
 
-	async deleteConnection(name: string, source?: "global" | "project"): Promise<void> {
+	async deleteConnection(name: string, source?: McpSource): Promise<void> {
 		// Clean up file watchers for this server
 		this.removeFileWatchersForServer(name)
 
@@ -1728,7 +1782,7 @@ export class McpHub {
 
 	async updateServerConnections(
 		newServers: Record<string, any>,
-		source: "global" | "project" = "global",
+		source: McpSource = "global",
 		manageConnectingState: boolean = true,
 	): Promise<void> {
 		if (manageConnectingState) {
@@ -1805,11 +1859,7 @@ export class McpHub {
 		}
 	}
 
-	private setupFileWatcher(
-		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
-		source: "global" | "project" = "global",
-	) {
+	private setupFileWatcher(name: string, config: z.infer<typeof ServerConfigSchema>, source: McpSource = "global") {
 		// Initialize an empty array for this server if it doesn't exist
 		if (!this.fileWatchers.has(name)) {
 			this.fileWatchers.set(name, [])
@@ -1881,7 +1931,8 @@ export class McpHub {
 		}
 	}
 
-	async restartConnection(serverName: string, source?: "global" | "project"): Promise<void> {
+	// kilocode_change: added silent parameter to suppress notifications during auto-reconnect
+	async restartConnection(serverName: string, source?: McpSource, silent?: boolean): Promise<void> {
 		this.isConnecting = true
 
 		// Check if MCP is globally enabled
@@ -1895,11 +1946,15 @@ export class McpHub {
 		const connection = this.findConnection(serverName, source)
 		const config = connection?.server.config
 		if (config) {
-			vscode.window.showInformationMessage(t("mcp:info.server_restarting", { serverName }))
+			if (!silent) {
+				vscode.window.showInformationMessage(t("mcp:info.server_restarting", { serverName }))
+			}
 			connection.server.status = "connecting"
 			connection.server.error = ""
 			await this.notifyWebviewOfServerChanges()
-			await delay(500) // artificial delay to show user that server is restarting
+			if (!silent) {
+				await delay(500) // artificial delay to show user that server is restarting
+			}
 			try {
 				await this.deleteConnection(serverName, connection.server.source)
 				// Parse the config to validate it
@@ -1910,7 +1965,9 @@ export class McpHub {
 
 					// Try to connect again using validated config
 					await this.connectToServer(serverName, validatedConfig, connection.server.source || "global")
-					vscode.window.showInformationMessage(t("mcp:info.server_connected", { serverName }))
+					if (!silent) {
+						vscode.window.showInformationMessage(t("mcp:info.server_connected", { serverName }))
+					}
 				} catch (validationError) {
 					this.showErrorMessage(`Invalid configuration for MCP server "${serverName}"`, validationError)
 				}
@@ -1972,16 +2029,39 @@ export class McpHub {
 				}
 			}
 
-			// Clear all existing connections first
+			// kilocode_change start - Preserve builtin connections during refresh
+			// Builtin servers are managed externally by AidMcpService; deleting them
+			// here would orphan them since only global/project are re-initialized below.
 			const existingConnections = [...this.connections]
 			for (const conn of existingConnections) {
+				if (conn.server.source === "builtin") {
+					continue
+				}
 				await this.deleteConnection(conn.server.name, conn.server.source)
 			}
+			// kilocode_change end
 
-			// Re-initialize all servers from scratch
-			// This ensures proper initialization including fetching tools, resources, etc.
+			// Re-initialize global and project servers from scratch
 			await this.initializeMcpServers("global")
 			await this.initializeMcpServers("project")
+
+			// kilocode_change start - Reconnect any disconnected builtin servers
+			const builtinConnections = this.connections.filter((c) => c.server.source === "builtin")
+			for (const conn of builtinConnections) {
+				if (conn.server.status === "disconnected" && !conn.server.disabled) {
+					try {
+						this.logDiag(conn.server.name, "refresh-reconnect", "reconnecting disconnected builtin server")
+						await this.restartConnection(conn.server.name, "builtin", true)
+					} catch (error) {
+						this.logDiag(
+							conn.server.name,
+							"refresh-reconnect-failed",
+							error instanceof Error ? error.message : String(error),
+						)
+					}
+				}
+			}
+			// kilocode_change end
 
 			await delay(100)
 
@@ -2057,11 +2137,7 @@ export class McpHub {
 		}
 	}
 
-	public async toggleServerDisabled(
-		serverName: string,
-		disabled: boolean,
-		source?: "global" | "project",
-	): Promise<void> {
+	public async toggleServerDisabled(serverName: string, disabled: boolean, source?: McpSource): Promise<void> {
 		try {
 			// Find the connection to determine if it's a global or project server
 			const connection = this.findConnection(serverName, source)
@@ -2118,7 +2194,7 @@ export class McpHub {
 	 */
 	private async readServerConfigFromFile(
 		serverName: string,
-		source: "global" | "project" = "global",
+		source: McpSource = "global",
 	): Promise<z.infer<typeof ServerConfigSchema>> {
 		// Determine which config file to read
 		let configPath: string
@@ -2170,7 +2246,7 @@ export class McpHub {
 	private async updateServerConfig(
 		serverName: string,
 		configUpdate: Record<string, any>,
-		source: "global" | "project" = "global",
+		source: McpSource = "global",
 	): Promise<void> {
 		// Determine which config file to update
 		let configPath: string
@@ -2243,11 +2319,7 @@ export class McpHub {
 		}
 	}
 
-	public async updateServerTimeout(
-		serverName: string,
-		timeout: number,
-		source?: "global" | "project",
-	): Promise<void> {
+	public async updateServerTimeout(serverName: string, timeout: number, source?: McpSource): Promise<void> {
 		try {
 			// Find the connection to determine if it's a global or project server
 			const connection = this.findConnection(serverName, source)
@@ -2265,7 +2337,7 @@ export class McpHub {
 		}
 	}
 
-	public async deleteServer(serverName: string, source?: "global" | "project"): Promise<void> {
+	public async deleteServer(serverName: string, source?: McpSource): Promise<void> {
 		try {
 			// Find the connection to determine if it's a global or project server
 			const connection = this.findConnection(serverName, source)
@@ -2333,7 +2405,7 @@ export class McpHub {
 		}
 	}
 
-	async readResource(serverName: string, uri: string, source?: "global" | "project"): Promise<McpResourceResponse> {
+	async readResource(serverName: string, uri: string, source?: McpSource): Promise<McpResourceResponse> {
 		const connection = this.findConnection(serverName, source)
 		if (!connection || connection.type !== "connected") {
 			throw new Error(`No connection found for server: ${serverName}${source ? ` with source ${source}` : ""}`)
@@ -2356,7 +2428,7 @@ export class McpHub {
 		serverName: string,
 		toolName: string,
 		toolArguments?: Record<string, unknown>,
-		source?: "global" | "project",
+		source?: McpSource,
 	): Promise<McpToolCallResponse> {
 		const connection = this.findConnection(serverName, source)
 		if (!connection || connection.type !== "connected") {
@@ -2404,7 +2476,7 @@ export class McpHub {
 	 */
 	private async updateServerToolList(
 		serverName: string,
-		source: "global" | "project",
+		source: McpSource,
 		toolName: string,
 		listName: "alwaysAllow" | "disabledTools",
 		addTool: boolean,
@@ -2486,7 +2558,7 @@ export class McpHub {
 
 	async toggleToolAlwaysAllow(
 		serverName: string,
-		source: "global" | "project",
+		source: McpSource,
 		toolName: string,
 		shouldAllow: boolean,
 	): Promise<void> {
@@ -2503,7 +2575,7 @@ export class McpHub {
 
 	async toggleToolEnabledForPrompt(
 		serverName: string,
-		source: "global" | "project",
+		source: McpSource,
 		toolName: string,
 		isEnabled: boolean,
 	): Promise<void> {
@@ -2624,5 +2696,9 @@ export class McpHub {
 		}
 
 		this.disposables.forEach((d) => d.dispose())
+
+		// kilocode_change start - Dispose diagnostics channel
+		this.diagnosticsChannel.dispose()
+		// kilocode_change end
 	}
 }
