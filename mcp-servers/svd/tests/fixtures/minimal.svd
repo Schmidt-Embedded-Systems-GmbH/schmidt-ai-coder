@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Minimal SVD file for testing.
+  Represents a fictional microcontroller with GPIO and Timer peripherals.
+-->
+<device schemaVersion="1.3" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="CMSIS-SVD.xsd">
+  <name>TEST_MCUTEST</name>
+  <version>1.0</version>
+  <description>Minimal test device for SVD parser testing</description>
+  <vendor>TestVendor</vendor>
+  
+  <cpu>
+    <name>CM4</name>
+    <revision>r0p0</revision>
+    <endian>little</endian>
+    <mpuPresent>true</mpuPresent>
+    <fpuPresent>true</fpuPresent>
+    <nvicPrioBits>4</nvicPrioBits>
+    <vendorSystickConfig>false</vendorSystickConfig>
+  </cpu>
+  
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  
+  <peripherals>
+    <!-- GPIOA Peripheral -->
+    <peripheral>
+      <name>GPIOA</name>
+      <description>General Purpose I/O Port A</description>
+      <groupName>GPIO</groupName>
+      <baseAddress>0x40020000</baseAddress>
+      
+      <interrupt>
+        <name>GPIOA_IRQn</name>
+        <value>10</value>
+        <description>GPIO Port A interrupt</description>
+      </interrupt>
+      
+      <registers>
+        <!-- Mode Register -->
+        <register>
+          <name>MODER</name>
+          <displayName>MODER</displayName>
+          <description>GPIO port mode register</description>
+          <addressOffset>0x00</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          <resetMask>0xFFFFFFFF</resetMask>
+          
+          <fields>
+            <field>
+              <name>MODE0</name>
+              <description>Port x configuration bits (y = 0..15)</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>2</bitWidth>
+              <access>read-write</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>Input</name>
+                  <description>Input mode</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Output</name>
+                  <description>Output mode</description>
+                  <value>1</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Alternate</name>
+                  <description>Alternate function mode</description>
+                  <value>2</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Analog</name>
+                  <description>Analog mode</description>
+                  <value>3</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>MODE1</name>
+              <description>Port x configuration bits (y = 0..15)</description>
+              <bitOffset>2</bitOffset>
+              <bitWidth>2</bitWidth>
+              <access>read-write</access>
+            </field>
+          </fields>
+        </register>
+        
+        <!-- Output Type Register -->
+        <register>
+          <name>OTYPER</name>
+          <displayName>OTYPER</displayName>
+          <description>GPIO port output type register</description>
+          <addressOffset>0x04</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          
+          <fields>
+            <field>
+              <name>OT0</name>
+              <description>Port x configuration bits (y = 0..15)</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>PushPull</name>
+                  <description>Output push-pull</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>OpenDrain</name>
+                  <description>Output open-drain</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+          </fields>
+        </register>
+        
+        <!-- Output Data Register -->
+        <register>
+          <name>ODR</name>
+          <displayName>ODR</displayName>
+          <description>GPIO port output data register</description>
+          <addressOffset>0x14</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          
+          <fields>
+            <field>
+              <name>ODR0</name>
+              <description>Port output data (y = 0..15)</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+            <field>
+              <name>ODR1</name>
+              <description>Port output data (y = 0..15)</description>
+              <bitOffset>1</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    
+    <!-- Timer Peripheral -->
+    <peripheral>
+      <name>TIM2</name>
+      <description>General-purpose timer 2</description>
+      <groupName>TIM</groupName>
+      <baseAddress>0x40000000</baseAddress>
+      
+      <interrupt>
+        <name>TIM2_IRQn</name>
+        <value>28</value>
+        <description>Timer 2 global interrupt</description>
+      </interrupt>
+      
+      <registers>
+        <!-- Control Register 1 -->
+        <register>
+          <name>CR1</name>
+          <displayName>CR1</displayName>
+          <description>Control register 1</description>
+          <addressOffset>0x00</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          
+          <fields>
+            <field>
+              <name>CEN</name>
+              <description>Counter enable</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+              <enumeratedValues>
+                <enumeratedValue>
+                  <name>Disabled</name>
+                  <description>Counter disabled</description>
+                  <value>0</value>
+                </enumeratedValue>
+                <enumeratedValue>
+                  <name>Enabled</name>
+                  <description>Counter enabled</description>
+                  <value>1</value>
+                </enumeratedValue>
+              </enumeratedValues>
+            </field>
+            <field>
+              <name>UDIS</name>
+              <description>Update disable</description>
+              <bitOffset>1</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+            <field>
+              <name>URS</name>
+              <description>Update request source</description>
+              <bitOffset>2</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+            <field>
+              <name>ARPE</name>
+              <description>Auto-reload preload enable</description>
+              <bitOffset>7</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+          </fields>
+        </register>
+        
+        <!-- Status Register -->
+        <register>
+          <name>SR</name>
+          <displayName>SR</displayName>
+          <description>Status register</description>
+          <addressOffset>0x10</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          
+          <fields>
+            <field>
+              <name>UIF</name>
+              <description>Update interrupt flag</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>1</bitWidth>
+              <access>read-write</access>
+            </field>
+          </fields>
+        </register>
+        
+        <!-- Auto-reload Register -->
+        <register>
+          <name>ARR</name>
+          <displayName>ARR</displayName>
+          <description>Auto-reload register</description>
+          <addressOffset>0x2C</addressOffset>
+          <size>32</size>
+          <access>read-write</access>
+          <resetValue>0x00000000</resetValue>
+          
+          <fields>
+            <field>
+              <name>ARR</name>
+              <description>Auto-reload value</description>
+              <bitOffset>0</bitOffset>
+              <bitWidth>16</bitWidth>
+              <access>read-write</access>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
+</device>
