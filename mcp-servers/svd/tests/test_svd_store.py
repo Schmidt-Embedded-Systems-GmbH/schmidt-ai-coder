@@ -4,7 +4,6 @@ Tests for the SVD Store module.
 These tests verify SVD loading, parsing, indexing, and lookup functionality.
 """
 
-import os
 from pathlib import Path
 
 import pytest

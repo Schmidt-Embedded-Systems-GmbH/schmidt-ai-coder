@@ -4,16 +4,52 @@ import { execSync } from "child_process"
 
 import { ViewsContainer, Views, Menus, Configuration, Keybindings, contributesSchema } from "./types.js"
 
-function copyDir(srcDir: string, dstDir: string, count: number): number {
+// kilocode_change: add exclude patterns for Python artifacts
+const DEFAULT_EXCLUDE_PATTERNS = [
+	'.pytest_cache',
+	'.venv',
+	'__pycache__',
+	'.mypy_cache',
+	'.ruff_cache',
+	'*.pyc',
+	'.eggs',
+	'*.egg-info',
+	'node_modules',
+]
+
+function copyDir(srcDir: string, dstDir: string, count: number, excludePatterns: string[] = []): number {
 	const entries = fs.readdirSync(srcDir, { withFileTypes: true })
+	const allPatterns = [...DEFAULT_EXCLUDE_PATTERNS, ...excludePatterns]
 
 	for (const entry of entries) {
+		// Check if this entry should be excluded
+		const shouldExclude = allPatterns.some((pattern) => {
+			if (pattern.startsWith('*') && pattern.endsWith('*')) {
+				// Contains pattern (e.g., *.egg-info)
+				const middle = pattern.slice(1, -1)
+				return entry.name.includes(middle)
+			} else if (pattern.startsWith('*')) {
+				// Suffix pattern (e.g., *.pyc)
+				return entry.name.endsWith(pattern.slice(1))
+			} else if (pattern.endsWith('*')) {
+				// Prefix pattern
+				return entry.name.startsWith(pattern.slice(0, -1))
+			} else {
+				// Exact match
+				return entry.name === pattern
+			}
+		})
+
+		if (shouldExclude) {
+			continue
+		}
+
 		const srcPath = path.join(srcDir, entry.name)
 		const dstPath = path.join(dstDir, entry.name)
 
 		if (entry.isDirectory()) {
 			fs.mkdirSync(dstPath, { recursive: true })
-			count = copyDir(srcPath, dstPath, count)
+			count = copyDir(srcPath, dstPath, count, excludePatterns)
 		} else {
 			count = count + 1
 			fs.copyFileSync(srcPath, dstPath)

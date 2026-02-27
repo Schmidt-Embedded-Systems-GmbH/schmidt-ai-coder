@@ -92,6 +92,7 @@ async function main() {
 							["../mcp-servers/valgrind", "aid-mcp-servers/valgrind"],
 							["../mcp-servers/utils", "aid-mcp-servers/utils"],
 							["../mcp-servers/linter", "aid-mcp-servers/linter"],
+							["../mcp-servers/svd", "aid-mcp-servers/svd"],
 						],
 						srcDir,
 						distDir,

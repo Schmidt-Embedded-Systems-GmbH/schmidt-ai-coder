@@ -6,7 +6,6 @@ optimized for LLM consumption with clear field names and documentation.
 """
 
 from enum import Enum
-from typing import Any
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -191,7 +190,7 @@ class FieldDetail(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     name: str = Field(..., description="Field name")
-    register: str = Field(..., description="Parent register name")
+    register_name: str = Field(..., alias="register", description="Parent register name")
     peripheral: str = Field(..., description="Parent peripheral name")
     bit_offset: int = Field(..., description="Bit offset within register")
     bit_width: int = Field(..., description="Field width in bits")
@@ -291,7 +290,7 @@ class DecodedRegister(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     peripheral: str = Field(..., description="Peripheral name")
-    register: str = Field(..., description="Register name")
+    register_name: str = Field(..., alias="register", description="Register name")
     input_value: int = Field(..., description="Input value")
     input_value_hex: str = Field(..., description="Input value in hex")
     fields: list[DecodedField] = Field(default_factory=list, description="Decoded fields")
@@ -314,7 +313,7 @@ class EncodedRegister(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
     
     peripheral: str = Field(..., description="Peripheral name")
-    register: str = Field(..., description="Register name")
+    register_name: str = Field(..., alias="register", description="Register name")
     base_value: int = Field(0, description="Starting base value")
     final_value: int = Field(..., description="Final computed value")
     final_value_hex: str = Field(..., description="Final value in hex")

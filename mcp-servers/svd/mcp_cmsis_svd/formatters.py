@@ -5,7 +5,6 @@ These formatters generate human-readable markdown for MCP resources,
 optimized for "Add Context" in VS Code.
 """
 
-from typing import Any
 
 from mcp_cmsis_svd.model import (
     DeviceSummary,
@@ -14,7 +13,6 @@ from mcp_cmsis_svd.model import (
     RegisterDetail,
     RegisterListItem,
     FieldDetail,
-    FieldInfo,
     DecodedRegister,
     EncodedRegister,
     SearchResult,

@@ -12,25 +12,14 @@ Features:
 - Markdown resources for context
 """
 
-import json
+import os
 import sys
-from typing import Any
 
-import cmsis_svd  # For validation of derived peripherals
 from fastmcp import FastMCP, Context
 
 from mcp_cmsis_svd.svd_store import get_store, SVDStore
 from mcp_cmsis_svd.model import (
-    DeviceLoadResult,
-    DeviceSummary,
-    PeripheralListItem,
-    PeripheralDetail,
-    RegisterListItem,
-    RegisterDetail,
-    FieldDetail,
-    SearchResult,
     SearchResultList,
-    ResolvedComponent,
     DecodedRegister,
     DecodedField,
     EncodedRegister,
@@ -40,15 +29,50 @@ from mcp_cmsis_svd.model import (
 )
 from mcp_cmsis_svd.formatters import (
     format_device_summary,
-    format_peripheral_list,
     format_peripheral_detail,
-    format_register_list,
     format_register_detail,
     format_field_detail,
     format_search_results,
-    format_decoded_register,
-    format_encoded_register,
 )
+
+
+# ============================================================================
+# Workspace Initialization
+# ============================================================================
+
+def _initialize_workspace() -> str | None:
+    """Initialize workspace from AID_WORKSPACE_ROOT. Returns absolute path or None."""
+    workspace = os.environ.get("AID_WORKSPACE_ROOT")
+    if workspace:
+        abs_path = os.path.abspath(workspace)
+        print(f"SVD Server Workspace: {abs_path}", file=sys.stderr)
+        return abs_path
+    return None
+
+
+def _resolve_path(path: str, workspace_root: str | None) -> str:
+    """Resolve a path, handling relative paths against workspace root.
+    
+    Args:
+        path: The path to resolve (can be absolute or relative)
+        workspace_root: The workspace root path (from AID_WORKSPACE_ROOT)
+    
+    Returns:
+        Absolute path
+    """
+    # If already absolute, return as-is
+    if os.path.isabs(path):
+        return path
+    
+    # If relative and we have a workspace root, resolve against it
+    if workspace_root:
+        return os.path.abspath(os.path.join(workspace_root, path))
+    
+    # Otherwise, resolve against current working directory
+    return os.path.abspath(path)
+
+
+_workspace_root = _initialize_workspace()
 
 
 # ============================================================================
@@ -106,14 +130,18 @@ async def svd_load(
     Load and parse an SVD file, setting it as the active device.
     
     Args:
-        path: Path to the SVD file (.svd or .xml)
+        path: Path to the SVD file (.svd or .xml). Can be absolute or relative
+              to the workspace root (AID_WORKSPACE_ROOT env var).
         strict: Enable strict parsing mode (default: False)
     
     Returns:
         Device load result with device_id and summary, or error message
     """
+    # Resolve the path against workspace root if relative
+    resolved_path = _resolve_path(path, _workspace_root)
+    
     store = get_store()
-    result = store.load(path, strict)
+    result = store.load(resolved_path, strict)
     
     if result.success:
         await ctx.info(f"Loaded SVD: {result.device.name}")
@@ -402,7 +430,7 @@ async def svd_resolve(
 async def svd_decode_register_value(
     peripheral: str,
     register: str,
-    value: int,
+    value: int | str,
     device_id: str | None = None,
     ctx: Context = None,
 ) -> dict:
@@ -412,7 +440,7 @@ async def svd_decode_register_value(
     Args:
         peripheral: Peripheral name
         register: Register name
-        value: Register value to decode (integer)
+        value: Register value to decode (integer or hex string like "0x12345678")
         device_id: Optional device ID (defaults to active device)
     
     Returns:
@@ -422,6 +450,13 @@ async def svd_decode_register_value(
     
     if not device_id:
         _, device_id = _require_active_device(ctx)
+    
+    # Parse value if it's a string (supports hex like "0x12345678")
+    if isinstance(value, str):
+        try:
+            value = int(value, 0)  # Base 0 auto-detects hex/decimal/octal
+        except ValueError:
+            return {"error": f"Invalid value format: {value}. Use integer or hex string like '0x12345678'."}
     
     # Get register details
     reg = store.get_register(peripheral, register, device_id)
@@ -463,7 +498,7 @@ async def svd_decode_register_value(
     
     result = DecodedRegister(
         peripheral=peripheral,
-        register=register,
+        register_name=register,
         input_value=value,
         input_value_hex=f"0x{value:X}",
         fields=decoded_fields,
@@ -564,7 +599,7 @@ async def svd_encode_register_value(
     
     result = EncodedRegister(
         peripheral=peripheral,
-        register=register,
+        register_name=register,
         base_value=base_value,
         final_value=final_value,
         final_value_hex=f"0x{final_value:X}",
@@ -600,7 +635,9 @@ async def svd_validate(
     
     # If path provided, try to load it first
     if path:
-        result = store.load(path)
+        # Resolve the path against workspace root if relative
+        resolved_path = _resolve_path(path, _workspace_root)
+        result = store.load(resolved_path)
         if not result.success:
             return ValidationResult(
                 valid=False,

@@ -12,8 +12,6 @@ import hashlib
 import os
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -78,6 +76,161 @@ def _parse_access(access_val: Any) -> AccessType:
         "writeOnce": AccessType.WRITE_ONCE,
     }
     return access_map.get(access_str, AccessType.UNKNOWN)
+
+
+def _get_register_name(reg: Any) -> str:
+    """Get the name from a register, handling both SVDRegister and SVDRegisterArray types.
+    
+    The cmsis-svd library has two register types:
+    - SVDRegister: has 'name' attribute directly
+    - SVDRegisterArray: has 'meta_register' attribute containing the template register
+    
+    This function normalizes access to the register name for both types.
+    """
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        # It's an SVDRegisterArray - get name from the template register
+        return getattr(reg.meta_register, 'name', '')
+    else:
+        # It's a regular SVDRegister
+        return getattr(reg, 'name', '')
+
+
+def _get_register_fields(reg: Any) -> list:
+    """Get fields from a register, handling both SVDRegister and SVDRegisterArray types.
+    
+    The cmsis-svd library has two register types:
+    - SVDRegister: has 'fields' attribute directly
+    - SVDRegisterArray: has 'meta_register' attribute containing the template register
+    
+    This function normalizes access to fields for both types.
+    """
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        # It's an SVDRegisterArray - get fields from the template register
+        template_reg = reg.meta_register
+        if hasattr(template_reg, 'fields'):
+            return template_reg.fields or []
+        if hasattr(template_reg, 'get_fields'):
+            fields = template_reg.get_fields()
+            return fields or []
+    else:
+        # It's a regular SVDRegister
+        if hasattr(reg, 'fields'):
+            return reg.fields or []
+        if hasattr(reg, 'get_fields'):
+            fields = reg.get_fields()
+            return fields or []
+    
+    return []
+
+
+def _get_register_dim_info(reg: Any) -> tuple[int | None, list[str] | None]:
+    """Get dimension info from a register, handling both SVDRegister and SVDRegisterArray types.
+    
+    Returns:
+        Tuple of (dim, dim_index) where:
+        - dim: Number of elements in the array, or None if not an array
+        - dim_index: List of index names, or None
+    """
+    # SVDRegisterArray has dim on the array object itself
+    if hasattr(reg, 'dim') and reg.dim is not None:
+        dim = int(reg.dim)
+        dim_index = getattr(reg, 'dim_index', None)
+        return dim, dim_index
+    # For SVDRegister, check meta_register if it's an array type
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        meta = reg.meta_register
+        if hasattr(meta, 'dim') and meta.dim is not None:
+            dim = int(meta.dim)
+            dim_index = getattr(meta, 'dim_index', None)
+            return dim, dim_index
+    return None, None
+
+
+def _get_field_name(field: Any) -> str:
+    """Get the name from a field, handling both SVDField and SVDFieldArray types.
+    
+    The cmsis-svd library has two field types:
+    - SVDField: has 'name' attribute directly
+    - SVDFieldArray: has 'meta_field' attribute containing the template field
+    
+    This function normalizes access to the field name for both types.
+    """
+    # Check if it's a field array (has meta_field)
+    if hasattr(field, 'meta_field') and field.meta_field is not None:
+        # It's an SVDFieldArray - get name from the template field
+        return getattr(field.meta_field, 'name', '')
+    else:
+        # It's a regular SVDField
+        return getattr(field, 'name', '')
+
+
+def _get_field_bit_info(field: Any) -> tuple[int | int | None]:
+    """Get bit range from a field, handling both SVDField and SVDFieldArray types.
+    
+    Returns:
+        Tuple of (bit_offset, bit_width) or (None, None) if not available
+    """
+    # Check if it's a field array (has meta_field)
+    if hasattr(field, 'meta_field') and field.meta_field is not None:
+        # It's an SVDFieldArray - get bit info from the template field
+        template = field.meta_field
+        bit_offset = getattr(template, 'bit_offset', None)
+        bit_width = getattr(template, 'bit_width', None)
+        return bit_offset, bit_width
+    else:
+        # It's a regular SVDField
+        bit_offset = getattr(field, 'bit_offset', None)
+        bit_width = getattr(field, 'bit_width', None)
+        return bit_offset, bit_width
+
+
+def _get_register_address_offset(reg: Any) -> int:
+    """Get address_offset from a register, handling both SVDRegister and SVDRegisterArray types."""
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        # It's an SVDRegisterArray - get address_offset from the template register
+        return getattr(reg.meta_register, 'address_offset', 0) or 0
+    else:
+        # It's a regular SVDRegister
+        return getattr(reg, 'address_offset', 0) or 0
+
+
+def _get_register_size(reg: Any) -> int:
+    """Get size from a register, handling both SVDRegister and SVDRegisterArray types."""
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        return getattr(reg.meta_register, 'size', 32) or 32
+    else:
+        return getattr(reg, 'size', 32) or 32
+
+
+def _get_register_reset_value(reg: Any) -> int | None:
+    """Get reset_value from a register, handling both SVDRegister and SVDRegisterArray types."""
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        return getattr(reg.meta_register, 'reset_value', None)
+    else:
+        return getattr(reg, 'reset_value', None)
+
+
+def _get_register_access(reg: Any) -> str | None:
+    """Get access from a register, handling both SVDRegister and SVDRegisterArray types."""
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        return getattr(reg.meta_register, 'access', None)
+    else:
+        return getattr(reg, 'access', None)
+
+
+def _get_register_description(reg: Any) -> str | None:
+    """Get description from a register, handling both SVDRegister and SVDRegisterArray types."""
+    # Check if it's a register array (has meta_register)
+    if hasattr(reg, 'meta_register') and reg.meta_register is not None:
+        return getattr(reg.meta_register, 'description', None)
+    else:
+        return getattr(reg, 'description', None)
 
 
 # ============================================================================
@@ -267,7 +420,7 @@ class SVDStore:
         for periph in peripherals:
             for reg in periph.registers:
                 register_count += 1
-                for f in reg.fields:
+                for f in _get_register_fields(reg):
                     field_count += 1
         
         return DeviceSummary(
@@ -334,13 +487,11 @@ class SVDStore:
             
             # Index registers
             for reg in periph.registers:
-                reg_name = reg.name
+                reg_name = _get_register_name(reg)
                 # Handle array registers
-                reg_display = reg_name
-                if hasattr(reg, 'dim') and reg.dim:
+                dim, dim_index = _get_register_dim_info(reg)
+                if dim is not None:
                     # This is an array register - index each element
-                    dim = int(reg.dim)
-                    dim_index = getattr(reg, 'dim_index', None)
                     for i in range(dim):
                         if dim_index and i < len(dim_index):
                             idx_name = dim_index[i]
@@ -358,8 +509,8 @@ class SVDStore:
                     cached.name_lower_index[reg_name.lower()] = reg_canonical
                 
                 # Index fields
-                for f in reg.fields:
-                    field_name = f.name
+                for f in _get_register_fields(reg):
+                    field_name = _get_field_name(f)
                     field_canonical = f"FIELD:{periph_name}.{reg_name}.{field_name}"
                     cached.field_index[(periph_name, reg_name, field_name)] = f
                     cached.path_index[field_canonical] = f
@@ -529,15 +680,16 @@ class SVDStore:
     def _periph_to_detail_cmsis(self, periph: Any) -> PeripheralDetail:
         """Convert cmsis-svd peripheral to detail."""
         interrupts = []
-        for intr in getattr(periph, 'interrupts', []):
+        intr_list = getattr(periph, 'interrupts', None) or []
+        for intr in intr_list:
             interrupts.append(InterruptInfo(
                 name=intr.name,
                 value=intr.value,
                 description=getattr(intr, 'description', None),
             ))
         
-        registers = getattr(periph, 'registers', [])
-        key_regs = [r.name for r in registers[:5]] if registers else []
+        registers = getattr(periph, 'registers', None) or []
+        key_regs = [_get_register_name(r) for r in registers[:5]] if registers else []
         
         return PeripheralDetail(
             name=periph.name,
@@ -548,7 +700,7 @@ class SVDStore:
             version=getattr(periph, 'version', None),
             derived_from=getattr(periph, 'derived_from', None),
             register_count=len(registers),
-            cluster_count=len(getattr(periph, 'clusters', [])),
+            cluster_count=len(getattr(periph, 'clusters', None) or []),
             interrupts=interrupts,
             key_registers=key_regs,
             canonical_path=f"PERIPHERAL:{periph.name}",
@@ -657,21 +809,24 @@ class SVDStore:
         offset_override: int | None = None,
     ) -> RegisterListItem:
         """Convert cmsis-svd register to list item."""
-        offset = offset_override if offset_override is not None else reg.address_offset
+        reg_name = _get_register_name(reg)
+        offset = offset_override if offset_override is not None else _get_register_address_offset(reg)
         abs_addr = base_addr + offset
         
+        reset_val = _get_register_reset_value(reg)
+        
         return RegisterListItem(
-            name=reg.name,
-            display_name=display_name or reg.name,
+            name=reg_name,
+            display_name=display_name or reg_name,
             address_offset_hex=f"0x{offset:04X}",
             address_offset=offset,
             absolute_address_hex=f"0x{abs_addr:08X}",
             absolute_address=abs_addr,
-            size_bits=getattr(reg, 'size', 32) or 32,
-            access=_parse_access(getattr(reg, 'access', None)),
-            reset_value_hex=f"0x{reg.reset_value:X}" if hasattr(reg, 'reset_value') and reg.reset_value is not None else None,
-            description=self._truncate(getattr(reg, 'description', None)),
-            canonical_path=f"REG:{reg.name}",  # Will be updated by caller
+            size_bits=_get_register_size(reg),
+            access=_parse_access(_get_register_access(reg)),
+            reset_value_hex=f"0x{reset_val:X}" if reset_val is not None else None,
+            description=self._truncate(_get_register_description(reg)),
+            canonical_path=f"REG:{reg_name}",  # Will be updated by caller
         )
     
     def _reg_to_list_item_dict(self, reg: dict, base_addr: int, peripheral: str) -> RegisterListItem:
@@ -739,7 +894,7 @@ class SVDStore:
         abs_addr = base_addr + offset
         
         fields = []
-        for f in getattr(reg, 'fields', []):
+        for f in _get_register_fields(reg):
             field_info = self._field_to_info_cmsis(f, periph.name, reg.name)
             fields.append(field_info)
         
@@ -809,8 +964,15 @@ class SVDStore:
     
     def _field_to_info_cmsis(self, f: Any, peripheral: str, register: str) -> FieldInfo:
         """Convert cmsis-svd field to FieldInfo."""
-        bit_offset = f.bit_offset
-        bit_width = f.bit_width
+        field_name = _get_field_name(f)
+        bit_offset, bit_width = _get_field_bit_info(f)
+        
+        # Handle None values (shouldn't happen but be defensive)
+        if bit_offset is None:
+            bit_offset = getattr(f, 'bit_offset', 0)
+        if bit_width is None:
+            bit_width = getattr(f, 'bit_width', 1)
+        
         mask = ((1 << bit_width) - 1) << bit_offset
         
         enumerated = []
@@ -828,7 +990,7 @@ class SVDStore:
                         ))
         
         return FieldInfo(
-            name=f.name,
+            name=field_name,
             bit_offset=bit_offset,
             bit_width=bit_width,
             bit_range=f"{bit_offset + bit_width - 1}:{bit_offset}" if bit_width > 1 else str(bit_offset),
@@ -837,7 +999,7 @@ class SVDStore:
             access=_parse_access(getattr(f, 'access', None)),
             description=getattr(f, 'description', None),
             enumerated_values=enumerated,
-            canonical_path=f"FIELD:{peripheral}.{register}.{f.name}",
+            canonical_path=f"FIELD:{peripheral}.{register}.{field_name}",
         )
     
     def _field_to_info_dict(self, f: dict, peripheral: str, register: str) -> FieldInfo:
@@ -910,8 +1072,15 @@ class SVDStore:
     
     def _field_to_detail_cmsis(self, f: Any, peripheral: str, register: str) -> FieldDetail:
         """Convert cmsis-svd field to FieldDetail."""
-        bit_offset = f.bit_offset
-        bit_width = f.bit_width
+        field_name = _get_field_name(f)
+        bit_offset, bit_width = _get_field_bit_info(f)
+        
+        # Handle None values (shouldn't happen but be defensive)
+        if bit_offset is None:
+            bit_offset = getattr(f, 'bit_offset', 0)
+        if bit_width is None:
+            bit_width = getattr(f, 'bit_width', 1)
+        
         mask = ((1 << bit_width) - 1) << bit_offset
         
         enumerated = []
@@ -929,8 +1098,8 @@ class SVDStore:
                         ))
         
         return FieldDetail(
-            name=f.name,
-            register=register,
+            name=field_name,
+            register_name=register,
             peripheral=peripheral,
             bit_offset=bit_offset,
             bit_width=bit_width,
@@ -940,7 +1109,7 @@ class SVDStore:
             access=_parse_access(getattr(f, 'access', None)),
             description=getattr(f, 'description', None),
             enumerated_values=enumerated,
-            canonical_path=f"FIELD:{peripheral}.{register}.{f.name}",
+            canonical_path=f"FIELD:{peripheral}.{register}.{field_name}",
             modified_write_values=getattr(f, 'modified_write_values', None),
             read_action=getattr(f, 'read_action', None),
         )
@@ -968,7 +1137,7 @@ class SVDStore:
         
         return FieldDetail(
             name=f.get('name', ''),
-            register=register,
+            register_name=register,
             peripheral=peripheral,
             bit_offset=bit_offset,
             bit_width=bit_width,
