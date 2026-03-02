@@ -905,7 +905,7 @@ export const webviewMessageHandler = async (
 						// kilocode_change start
 						ovhcloud: {},
 						inception: {},
-						kilocode: {},
+						"schmidt-embedded-systems": {},
 						gemini: {},
 						apertis: {},
 						// kilocode_change end
@@ -2311,7 +2311,7 @@ export const webviewMessageHandler = async (
 						})
 						provider.postMessageToWebview({
 							type: "routerModels",
-							routerModels: { kilocode: models } as Record<RouterName, ModelRecord>,
+							routerModels: { "schmidt-embedded-systems": models } as Record<RouterName, ModelRecord>,
 						})
 					}
 				} catch (error) {
