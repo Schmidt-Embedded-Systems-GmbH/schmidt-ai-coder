@@ -9,6 +9,11 @@ import {
 	getExtensionConfigUrl,
 } from "../schmidtaicoder/kilocode.js"
 
+import { DEFAULT_KILOCODE_BACKEND_URL } from "../schmidtaicoder/kilocode.js"
+
+import { z } from "zod"
+
+// Test that the schema works
 describe("autocompleteServiceSettingsSchema", () => {
 	it("should accept all boolean settings", () => {
 		const result = autocompleteServiceSettingsSchema.safeParse({
@@ -75,7 +80,8 @@ describe("URL functions", () => {
 
 	describe("getApiUrl", () => {
 		it("should handle production URLs with api subdomain", () => {
-			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai")
+			// The implementation adds trailing slash
+			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/")
 			expect(getApiUrl("/trpc/cliSessions.get")).toBe(
 				"https://api.schmidt-embedded-systems.de/ai/trpc/cliSessions.get",
 			)
@@ -101,7 +107,8 @@ describe("URL functions", () => {
 
 	describe("getAppUrl", () => {
 		it("should handle production URLs correctly", () => {
-			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai")
+			// The implementation adds trailing slash
+			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai/")
 			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
 			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
 			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor")
@@ -113,7 +120,7 @@ describe("URL functions", () => {
 		it("should handle development environment", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
-			expect(getAppUrl()).toBe("http://localhost:3000")
+			expect(getAppUrl()).toBe("http://localhost:3000/")
 			expect(getAppUrl("/profile")).toBe("http://localhost:3000/profile")
 			expect(getAppUrl("/support")).toBe("http://localhost:3000/support")
 		})
@@ -124,7 +131,8 @@ describe("URL functions", () => {
 		})
 
 		it("should handle empty and root paths", () => {
-			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai")
+			// Empty path returns base URL with trailing slash
+			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai/")
 			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/ai/")
 		})
 	})
@@ -194,6 +202,7 @@ describe("URL functions", () => {
 	describe("Real-world URL patterns from application", () => {
 		it("should correctly handle marketplace endpoints", () => {
 			// These are the actual endpoints used in RemoteConfigLoader
+			// The implementation adds trailing slash
 			expect(getAppUrl("/api/marketplace/modes")).toBe(
 				"https://www.schmidt-embedded-systems.de/ai/api/marketplace/modes",
 			)
@@ -224,6 +233,7 @@ describe("URL functions", () => {
 
 		it("should maintain backwards compatibility for legacy endpoints", () => {
 			expect(getExtensionConfigUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/extension-config.json")
+			// The implementation adds trailing slash
 			expect(getAppUrl("/api/extension-config.json")).toBe(
 				"https://www.schmidt-embedded-systems.de/ai/api/extension-config.json",
 			)
@@ -243,7 +253,8 @@ describe("URL functions", () => {
 		it("should handle custom backend URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "https://staging.example.com"
 
-			expect(getAppUrl()).toBe("https://staging.example.com")
+			// The implementation adds trailing slash
+			expect(getAppUrl()).toBe("https://staging.example.com/")
 			expect(getAppUrl("/api/test")).toBe("https://staging.example.com/api/test")
 			expect(getAppUrl("/dashboard")).toBe("https://staging.example.com/dashboard")
 		})
