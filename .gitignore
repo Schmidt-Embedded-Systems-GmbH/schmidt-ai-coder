@@ -79,3 +79,8 @@ qdrant_storage/
 roo-cli-*.tar.gz*
 aid/**
 .corepack/
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/

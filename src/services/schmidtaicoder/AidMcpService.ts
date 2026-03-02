@@ -79,6 +79,25 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 			"8999",
 		],
 	},
+	{
+		key: "aid-svd",
+		displayName: "CMSIS-SVD",
+		description: "CMSIS-SVD device metadata for peripheral/register inspection",
+		defaultPort: 8008,
+		folderName: "svd",
+		requiresWorkspace: false,
+		startupArgs: (port: number) => [
+			"run",
+			"--frozen",
+			"fastmcp",
+			"run",
+			"mcp_cmsis_svd/server.py",
+			"-t",
+			"http",
+			"-p",
+			port.toString(),
+		],
+	},
 ]
 
 function getDefaultStartupArgs(port: number): string[] {
