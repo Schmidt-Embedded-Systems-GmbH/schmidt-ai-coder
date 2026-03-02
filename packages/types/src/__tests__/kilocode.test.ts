@@ -9,10 +9,6 @@ import {
 	getExtensionConfigUrl,
 } from "../schmidtaicoder/kilocode.js"
 
-import { DEFAULT_KILOCODE_BACKEND_URL } from "../schmidtaicoder/kilocode.js"
-
-import { z } from "zod"
-
 // Test that the schema works
 describe("autocompleteServiceSettingsSchema", () => {
 	it("should accept all boolean settings", () => {
