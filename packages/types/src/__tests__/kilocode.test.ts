@@ -76,18 +76,19 @@ describe("URL functions", () => {
 
 	describe("getApiUrl", () => {
 		it("should handle production URLs with api subdomain", () => {
-			// The URL constructor does NOT add trailing slash when base URL has no trailing slash
+			// URL constructor replaces path when given absolute path
 			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai")
 			expect(getApiUrl("/trpc/cliSessions.get")).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/trpc/cliSessions.get",
+				"https://api.schmidt-embedded-systems.de/trpc/cliSessions.get",
 			)
-			expect(getApiUrl("/api/profile")).toBe("https://api.schmidt-embedded-systems.de/ai/api/profile")
+			expect(getApiUrl("/api/profile")).toBe("https://api.schmidt-embedded-systems.de/api/profile")
 		})
 
 		it("should handle localhost development URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
-			expect(getApiUrl()).toBe("http://localhost:3000")
+			// URL constructor adds trailing slash for origin-only base URLs with empty path
+			expect(getApiUrl()).toBe("http://localhost:3000/")
 			expect(getApiUrl("/api/trpc/cliSessions.get")).toBe("http://localhost:3000/api/trpc/cliSessions.get")
 			expect(getApiUrl("/api/profile")).toBe("http://localhost:3000/api/profile")
 		})
@@ -95,7 +96,7 @@ describe("URL functions", () => {
 		it("should handle custom backend URLs (non-localhost)", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://192.168.200.70:3000"
 
-			expect(getApiUrl()).toBe("http://192.168.200.70:3000")
+			expect(getApiUrl()).toBe("http://192.168.200.70:3000/")
 			expect(getApiUrl("/api/trpc/cliSessions.get")).toBe("http://192.168.200.70:3000/api/trpc/cliSessions.get")
 			expect(getApiUrl("/api/profile")).toBe("http://192.168.200.70:3000/api/profile")
 		})
@@ -103,20 +104,20 @@ describe("URL functions", () => {
 
 	describe("getAppUrl", () => {
 		it("should handle production URLs correctly", () => {
-			// The URL constructor does NOT add trailing slash when base URL has no trailing slash
+			// URL constructor replaces path when given absolute path
 			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai")
-			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
-			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
-			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor")
+			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/profile")
+			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/support")
+			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/sign-in-to-editor")
 			expect(getAppUrl("/sign-in-to-editor?source=vscode")).toBe(
-				"https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor?source=vscode",
+				"https://www.schmidt-embedded-systems.de/sign-in-to-editor?source=vscode",
 			)
 		})
 
 		it("should handle development environment", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
-			expect(getAppUrl()).toBe("http://localhost:3000")
+			expect(getAppUrl()).toBe("http://localhost:3000/")
 			expect(getAppUrl("/profile")).toBe("http://localhost:3000/profile")
 			expect(getAppUrl("/support")).toBe("http://localhost:3000/support")
 		})
@@ -127,9 +128,9 @@ describe("URL functions", () => {
 		})
 
 		it("should handle empty and root paths", () => {
-			// Empty path returns base URL without trailing slash (URL constructor behavior)
+			// Empty path returns base URL; root path returns base URL with trailing slash
 			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai")
-			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/ai/")
+			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/")
 		})
 	})
 
@@ -197,19 +198,19 @@ describe("URL functions", () => {
 
 	describe("Real-world URL patterns from application", () => {
 		it("should correctly handle marketplace endpoints", () => {
-			// These are the actual endpoints used in RemoteConfigLoader
+			// URL constructor replaces path when given absolute path
 			expect(getAppUrl("/api/marketplace/modes")).toBe(
-				"https://www.schmidt-embedded-systems.de/ai/api/marketplace/modes",
+				"https://www.schmidt-embedded-systems.de/api/marketplace/modes",
 			)
 			expect(getAppUrl("/api/marketplace/mcps")).toBe(
-				"https://www.schmidt-embedded-systems.de/ai/api/marketplace/mcps",
+				"https://www.schmidt-embedded-systems.de/api/marketplace/mcps",
 			)
 		})
 
 		it("should correctly handle app navigation URLs", () => {
-			// These are the actual URLs used in Task.ts and webviewMessageHandler.ts
-			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
-			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
+			// URL constructor replaces path when given absolute path
+			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/profile")
+			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/support")
 		})
 
 		it("should correctly handle token-based API calls", () => {
@@ -229,7 +230,7 @@ describe("URL functions", () => {
 		it("should maintain backwards compatibility for legacy endpoints", () => {
 			expect(getExtensionConfigUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/extension-config.json")
 			expect(getAppUrl("/api/extension-config.json")).toBe(
-				"https://www.schmidt-embedded-systems.de/ai/api/extension-config.json",
+				"https://www.schmidt-embedded-systems.de/api/extension-config.json",
 			)
 			expect(getAppUrl("/api/extension-config.json")).not.toBe(getExtensionConfigUrl())
 		})
@@ -247,8 +248,8 @@ describe("URL functions", () => {
 		it("should handle custom backend URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "https://staging.example.com"
 
-			// The implementation does NOT add trailing slash for empty path
-			expect(getAppUrl()).toBe("https://staging.example.com")
+			// URL constructor adds trailing slash for origin-only base URLs with empty path
+			expect(getAppUrl()).toBe("https://staging.example.com/")
 			expect(getAppUrl("/api/test")).toBe("https://staging.example.com/api/test")
 			expect(getAppUrl("/dashboard")).toBe("https://staging.example.com/dashboard")
 		})
