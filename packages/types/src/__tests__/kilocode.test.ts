@@ -76,8 +76,8 @@ describe("URL functions", () => {
 
 	describe("getApiUrl", () => {
 		it("should handle production URLs with api subdomain", () => {
-			// The implementation does NOT add trailing slash
-			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai")
+			// The URL constructor adds trailing slash when path is empty
+			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/")
 			expect(getApiUrl("/trpc/cliSessions.get")).toBe(
 				"https://api.schmidt-embedded-systems.de/ai/trpc/cliSessions.get",
 			)
@@ -87,7 +87,7 @@ describe("URL functions", () => {
 		it("should handle localhost development URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
-			expect(getApiUrl()).toBe("http://localhost:3000")
+			expect(getApiUrl()).toBe("http://localhost:3000/")
 			expect(getApiUrl("/api/trpc/cliSessions.get")).toBe("http://localhost:3000/api/trpc/cliSessions.get")
 			expect(getApiUrl("/api/profile")).toBe("http://localhost:3000/api/profile")
 		})
@@ -95,7 +95,7 @@ describe("URL functions", () => {
 		it("should handle custom backend URLs (non-localhost)", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://192.168.200.70:3000"
 
-			expect(getApiUrl()).toBe("http://192.168.200.70:3000")
+			expect(getApiUrl()).toBe("http://192.168.200.70:3000/")
 			expect(getApiUrl("/api/trpc/cliSessions.get")).toBe("http://192.168.200.70:3000/api/trpc/cliSessions.get")
 			expect(getApiUrl("/api/profile")).toBe("http://192.168.200.70:3000/api/profile")
 		})
@@ -103,8 +103,8 @@ describe("URL functions", () => {
 
 	describe("getAppUrl", () => {
 		it("should handle production URLs correctly", () => {
-			// The implementation does NOT add trailing slash
-			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai")
+			// The URL constructor adds trailing slash when path is empty
+			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai/")
 			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
 			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
 			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor")
@@ -116,7 +116,7 @@ describe("URL functions", () => {
 		it("should handle development environment", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
-			expect(getAppUrl()).toBe("http://localhost:3000")
+			expect(getAppUrl()).toBe("http://localhost:3000/")
 			expect(getAppUrl("/profile")).toBe("http://localhost:3000/profile")
 			expect(getAppUrl("/support")).toBe("http://localhost:3000/support")
 		})
@@ -127,8 +127,8 @@ describe("URL functions", () => {
 		})
 
 		it("should handle empty and root paths", () => {
-			// Empty path returns base URL without trailing slash
-			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai")
+			// Empty path returns base URL with trailing slash (URL constructor behavior)
+			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai/")
 			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/ai/")
 		})
 	})
