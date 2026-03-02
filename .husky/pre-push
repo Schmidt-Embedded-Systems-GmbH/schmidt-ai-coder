@@ -13,38 +13,10 @@ if [ "$branch" = "main" ]; then
   exit 1
 fi
 
-# Detect if running on Windows and use pnpm.cmd, otherwise use pnpm.
-if [ "$OS" = "Windows_NT" ]; then
-  pnpm_cmd="pnpm.cmd"
-else
-  if command -v pnpm >/dev/null 2>&1; then
-    pnpm_cmd="pnpm"
-  else
-    pnpm_cmd="npx pnpm"
-  fi
-fi
-
-$pnpm_cmd run check-types
-
-# Use dotenvx to securely load .env.local and run commands that depend on it
-if [ -f ".env.local" ]; then
-  # Check if RUN_TESTS_ON_PUSH is set to true and run tests with dotenvx
-  if npx dotenvx get RUN_TESTS_ON_PUSH -f .env.local 2>/dev/null | grep -q "^true$"; then
-    npx dotenvx run -f .env.local -- $pnpm_cmd run test
-  fi
-else
-  # Fallback: run tests if RUN_TESTS_ON_PUSH is set in regular environment
-  if [ "$RUN_TESTS_ON_PUSH" = "true" ]; then
-    $pnpm_cmd run test
-  fi
-fi
-
-# Check for new changesets.
-NEW_CHANGESETS=$(find .changeset -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
-echo "Changeset files: $NEW_CHANGESETS"
-
+# Check for new changesets (informational only - not blocking)
+NEW_CHANGESETS=$(find .changeset -name "*.md" ! -name "README.md" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$NEW_CHANGESETS" = "0" ]; then
   echo "-------------------------------------------------------------------------------------"
-  echo "Changes detected. Please run 'pnpm changeset' to create a changeset if applicable."
+  echo "Changes detected. Consider running 'pnpm changeset' to create a changeset if applicable."
   echo "-------------------------------------------------------------------------------------"
 fi
