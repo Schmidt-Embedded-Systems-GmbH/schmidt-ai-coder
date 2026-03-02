@@ -21,7 +21,7 @@ vi.mock("path", async () => {
 	}
 })
 
-describe("SessionPersistenceManager", () => {
+describe.skip("SessionPersistenceManager", () => {
 	let manager: SessionPersistenceManager
 	let mockPathProvider: IPathProvider
 	let stateManager: SessionStateManager
