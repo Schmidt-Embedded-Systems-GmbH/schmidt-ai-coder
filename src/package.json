@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
 	"publisher": "schmidt-embedded-systems",
-	"version": "5.8.0",
+	"version": "0.0.1",
 	"icon": "assets/icons/schmidt_ai_logo.png",
 	"galleryBanner": {
 		"color": "#1a1a2e",
@@ -107,19 +107,19 @@
 				{
 					"id": "schmidt-ai-coder-ActivityBar",
 					"title": "%views.activitybar.title%",
-				"icon": "assets/icons/schmidt-ai-light.svg",
-				"darkIcon": "assets/icons/schmidt-ai-dark.svg"
-			}
-		]
-	},
-	"views": {
-		"schmidt-ai-coder-ActivityBar": [
-			{
-				"type": "webview",
-				"id": "schmidt-ai-coder.SidebarProvider",
-				"name": "%views.sidebar.name%",
-				"icon": "assets/icons/schmidt-ai-light.svg",
-				"darkIcon": "assets/icons/schmidt-ai-dark.svg"
+					"icon": "assets/icons/schmidt-ai-light.svg",
+					"darkIcon": "assets/icons/schmidt-ai-dark.svg"
+				}
+			]
+		},
+		"views": {
+			"schmidt-ai-coder-ActivityBar": [
+				{
+					"type": "webview",
+					"id": "schmidt-ai-coder.SidebarProvider",
+					"name": "%views.sidebar.name%",
+					"icon": "assets/icons/schmidt-ai-light.svg",
+					"darkIcon": "assets/icons/schmidt-ai-dark.svg"
 				}
 			]
 		},
