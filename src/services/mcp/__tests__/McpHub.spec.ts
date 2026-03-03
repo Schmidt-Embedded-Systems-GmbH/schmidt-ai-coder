@@ -75,6 +75,14 @@ vi.mock("vscode", () => ({
 		createTextEditorDecorationType: vi.fn().mockReturnValue({
 			dispose: vi.fn(),
 		}),
+		createOutputChannel: vi.fn().mockReturnValue({
+			appendLine: vi.fn(),
+			append: vi.fn(),
+			clear: vi.fn(),
+			show: vi.fn(),
+			hide: vi.fn(),
+			dispose: vi.fn(),
+		}),
 	},
 	Disposable: {
 		from: vi.fn(),

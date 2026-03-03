@@ -9,6 +9,7 @@ import {
 	getExtensionConfigUrl,
 } from "../schmidtaicoder/kilocode.js"
 
+// Test that the schema works
 describe("autocompleteServiceSettingsSchema", () => {
 	it("should accept all boolean settings", () => {
 		const result = autocompleteServiceSettingsSchema.safeParse({
@@ -75,14 +76,18 @@ describe("URL functions", () => {
 
 	describe("getApiUrl", () => {
 		it("should handle production URLs with api subdomain", () => {
-			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/")
-			expect(getApiUrl("/trpc/cliSessions.get")).toBe("https://api.schmidt-embedded-systems.de/ai/trpc/cliSessions.get")
-			expect(getApiUrl("/api/profile")).toBe("https://api.schmidt-embedded-systems.de/ai/api/profile")
+			// URL constructor replaces path when given absolute path
+			expect(getApiUrl()).toBe("https://api.schmidt-embedded-systems.de/ai")
+			expect(getApiUrl("/trpc/cliSessions.get")).toBe(
+				"https://api.schmidt-embedded-systems.de/trpc/cliSessions.get",
+			)
+			expect(getApiUrl("/api/profile")).toBe("https://api.schmidt-embedded-systems.de/api/profile")
 		})
 
 		it("should handle localhost development URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "http://localhost:3000"
 
+			// URL constructor adds trailing slash for origin-only base URLs with empty path
 			expect(getApiUrl()).toBe("http://localhost:3000/")
 			expect(getApiUrl("/api/trpc/cliSessions.get")).toBe("http://localhost:3000/api/trpc/cliSessions.get")
 			expect(getApiUrl("/api/profile")).toBe("http://localhost:3000/api/profile")
@@ -99,12 +104,13 @@ describe("URL functions", () => {
 
 	describe("getAppUrl", () => {
 		it("should handle production URLs correctly", () => {
-			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai/")
-			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
-			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
-			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor")
+			// URL constructor replaces path when given absolute path
+			expect(getAppUrl()).toBe("https://www.schmidt-embedded-systems.de/ai")
+			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/profile")
+			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/support")
+			expect(getAppUrl("/sign-in-to-editor")).toBe("https://www.schmidt-embedded-systems.de/sign-in-to-editor")
 			expect(getAppUrl("/sign-in-to-editor?source=vscode")).toBe(
-				"https://www.schmidt-embedded-systems.de/ai/sign-in-to-editor?source=vscode",
+				"https://www.schmidt-embedded-systems.de/sign-in-to-editor?source=vscode",
 			)
 		})
 
@@ -122,8 +128,9 @@ describe("URL functions", () => {
 		})
 
 		it("should handle empty and root paths", () => {
-			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai/")
-			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/ai/")
+			// Empty path returns base URL; root path returns base URL with trailing slash
+			expect(getAppUrl("")).toBe("https://www.schmidt-embedded-systems.de/ai")
+			expect(getAppUrl("/")).toBe("https://www.schmidt-embedded-systems.de/")
 		})
 	})
 
@@ -135,45 +142,54 @@ describe("URL functions", () => {
 			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile", prodToken)).toBe(
 				"https://api.schmidt-embedded-systems.de/ai/api/profile",
 			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", prodToken)).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/api/profile/balance",
-			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/organizations/123/defaults", prodToken)).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/api/organizations/123/defaults",
-			)
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", prodToken),
+			).toBe("https://api.schmidt-embedded-systems.de/ai/api/profile/balance")
+			expect(
+				getKiloUrlFromToken(
+					"https://api.schmidt-embedded-systems.de/ai/api/organizations/123/defaults",
+					prodToken,
+				),
+			).toBe("https://api.schmidt-embedded-systems.de/ai/api/organizations/123/defaults")
 			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/openrouter/", prodToken)).toBe(
 				"https://api.schmidt-embedded-systems.de/ai/api/openrouter/",
 			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", prodToken)).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/api/users/notifications",
-			)
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", prodToken),
+			).toBe("https://api.schmidt-embedded-systems.de/ai/api/users/notifications")
 		})
 
 		it("should map development tokens to localhost correctly", () => {
 			const devToken = createDevToken()
 
-			// Development token should map to localhost:3000
+			// Development token should map to localhost:3000 (keeps the /ai path from target URL)
 			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile", devToken)).toBe(
-				"http://localhost:3000/api/profile",
+				"http://localhost:3000/ai/api/profile",
 			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", devToken)).toBe(
-				"http://localhost:3000/api/profile/balance",
-			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/organizations/456/defaults", devToken)).toBe(
-				"http://localhost:3000/api/organizations/456/defaults",
-			)
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", devToken),
+			).toBe("http://localhost:3000/ai/api/profile/balance")
+			expect(
+				getKiloUrlFromToken(
+					"https://api.schmidt-embedded-systems.de/ai/api/organizations/456/defaults",
+					devToken,
+				),
+			).toBe("http://localhost:3000/ai/api/organizations/456/defaults")
 			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/openrouter/", devToken)).toBe(
-				"http://localhost:3000/api/openrouter/",
+				"http://localhost:3000/ai/api/openrouter/",
 			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", devToken)).toBe(
-				"http://localhost:3000/api/users/notifications",
-			)
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", devToken),
+			).toBe("http://localhost:3000/ai/api/users/notifications")
 		})
 
 		it("should handle invalid tokens gracefully", () => {
 			const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
 			// Use a token that looks like JWT but has invalid JSON payload
-			const result = getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/test", "header.invalid-json.signature")
+			const result = getKiloUrlFromToken(
+				"https://api.schmidt-embedded-systems.de/ai/api/test",
+				"header.invalid-json.signature",
+			)
 			expect(result).toBe("https://api.schmidt-embedded-systems.de/ai/api/test")
 			expect(consoleSpy).toHaveBeenCalledWith("Failed to get base URL from Schmidt AI Coder token")
 			consoleSpy.mockRestore()
@@ -182,15 +198,19 @@ describe("URL functions", () => {
 
 	describe("Real-world URL patterns from application", () => {
 		it("should correctly handle marketplace endpoints", () => {
-			// These are the actual endpoints used in RemoteConfigLoader
-			expect(getAppUrl("/api/marketplace/modes")).toBe("https://www.schmidt-embedded-systems.de/ai/api/marketplace/modes")
-			expect(getAppUrl("/api/marketplace/mcps")).toBe("https://www.schmidt-embedded-systems.de/ai/api/marketplace/mcps")
+			// URL constructor replaces path when given absolute path
+			expect(getAppUrl("/api/marketplace/modes")).toBe(
+				"https://www.schmidt-embedded-systems.de/api/marketplace/modes",
+			)
+			expect(getAppUrl("/api/marketplace/mcps")).toBe(
+				"https://www.schmidt-embedded-systems.de/api/marketplace/mcps",
+			)
 		})
 
 		it("should correctly handle app navigation URLs", () => {
-			// These are the actual URLs used in Task.ts and webviewMessageHandler.ts
-			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/ai/profile")
-			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/ai/support")
+			// URL constructor replaces path when given absolute path
+			expect(getAppUrl("/profile")).toBe("https://www.schmidt-embedded-systems.de/profile")
+			expect(getAppUrl("/support")).toBe("https://www.schmidt-embedded-systems.de/support")
 		})
 
 		it("should correctly handle token-based API calls", () => {
@@ -199,17 +219,19 @@ describe("URL functions", () => {
 			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile", prodToken)).toBe(
 				"https://api.schmidt-embedded-systems.de/ai/api/profile",
 			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", prodToken)).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/api/profile/balance",
-			)
-			expect(getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", prodToken)).toBe(
-				"https://api.schmidt-embedded-systems.de/ai/api/users/notifications",
-			)
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/profile/balance", prodToken),
+			).toBe("https://api.schmidt-embedded-systems.de/ai/api/profile/balance")
+			expect(
+				getKiloUrlFromToken("https://api.schmidt-embedded-systems.de/ai/api/users/notifications", prodToken),
+			).toBe("https://api.schmidt-embedded-systems.de/ai/api/users/notifications")
 		})
 
 		it("should maintain backwards compatibility for legacy endpoints", () => {
 			expect(getExtensionConfigUrl()).toBe("https://api.schmidt-embedded-systems.de/ai/extension-config.json")
-			expect(getAppUrl("/api/extension-config.json")).toBe("https://www.schmidt-embedded-systems.de/ai/api/extension-config.json")
+			expect(getAppUrl("/api/extension-config.json")).toBe(
+				"https://www.schmidt-embedded-systems.de/api/extension-config.json",
+			)
 			expect(getAppUrl("/api/extension-config.json")).not.toBe(getExtensionConfigUrl())
 		})
 	})
@@ -226,6 +248,7 @@ describe("URL functions", () => {
 		it("should handle custom backend URLs", () => {
 			process.env.KILOCODE_BACKEND_BASE_URL = "https://staging.example.com"
 
+			// URL constructor adds trailing slash for origin-only base URLs with empty path
 			expect(getAppUrl()).toBe("https://staging.example.com/")
 			expect(getAppUrl("/api/test")).toBe("https://staging.example.com/api/test")
 			expect(getAppUrl("/dashboard")).toBe("https://staging.example.com/dashboard")

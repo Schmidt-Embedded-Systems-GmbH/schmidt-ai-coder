@@ -1,8 +1,8 @@
 {
 	"$schema": "https://unpkg.com/@changesets/config@3.0.4/schema.json",
-	"changelog": ["@changesets/changelog-github", { "repo": "Kilo-Org/kilocode" }],
+	"changelog": ["@changesets/changelog-github", { "repo": "Schmidt-Embedded-Systems-GmbH/schmidt-ai-coder" }],
 	"commit": false,
-	"fixed": [["kilo-code"]],
+	"fixed": [["schmidt-ai-coder"]],
 	"linked": [],
 	"access": "restricted",
 	"baseBranch": "main",
