@@ -3,7 +3,7 @@
 	"displayName": "%extension.displayName%",
 	"description": "%extension.description%",
 	"publisher": "schmidt-embedded-systems",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"icon": "assets/icons/schmidt_ai_logo.png",
 	"galleryBanner": {
 		"color": "#1a1a2e",
