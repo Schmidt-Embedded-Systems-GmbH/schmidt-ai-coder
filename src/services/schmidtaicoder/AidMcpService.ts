@@ -18,6 +18,8 @@ interface AidServerDefinition {
 	defaultPort: number
 	folderName: string
 	requiresWorkspace: boolean
+	requiresQdrant?: boolean // Server needs Qdrant running
+	requiresOpenRouter?: boolean // Server needs OPENROUTER_API_KEY
 	startupArgs?: (port: number) => string[]
 	toolTimeout?: number // in seconds (McpHub schema max: 3600)
 }
@@ -98,6 +100,27 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 			port.toString(),
 		],
 	},
+	{
+		key: "aid-mcu-specs",
+		displayName: "MCU Specs",
+		description: "Datasheet search engine for microcontroller specifications",
+		defaultPort: 8009,
+		folderName: "mcu-specs",
+		requiresWorkspace: false,
+		requiresQdrant: true,
+		requiresOpenRouter: true,
+		startupArgs: (port: number) => [
+			"run",
+			"--frozen",
+			"fastmcp",
+			"run",
+			"main.py",
+			"-t",
+			"http",
+			"-p",
+			port.toString(),
+		],
+	},
 ]
 
 function getDefaultStartupArgs(port: number): string[] {
@@ -160,10 +183,47 @@ export class AidMcpService implements vscode.Disposable {
 		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null
 		this.outputChannel.appendLine(`[AID MCP] Starting servers from ${mcpServersPath}`)
 
+		// Pre-check dependencies for servers that need them
+		let qdrantAvailable: boolean | undefined
+		let openRouterAvailable: boolean | undefined
+
 		for (const def of AID_MCP_SERVERS) {
+			// Check workspace requirement
 			if (def.requiresWorkspace && !workspaceRoot) {
 				this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: no workspace folder open`)
 				continue
+			}
+
+			// Check Qdrant requirement
+			if (def.requiresQdrant) {
+				if (qdrantAvailable === undefined) {
+					qdrantAvailable = await this.checkQdrantAvailable()
+					if (!qdrantAvailable) {
+						this.outputChannel.appendLine(
+							"[AID MCP] Qdrant not available. Run: docker run -p 6333:6333 qdrant/qdrant",
+						)
+					}
+				}
+				if (!qdrantAvailable) {
+					this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: Qdrant not running`)
+					continue
+				}
+			}
+
+			// Check OpenRouter API key requirement
+			if (def.requiresOpenRouter) {
+				if (openRouterAvailable === undefined) {
+					openRouterAvailable = this.checkOpenRouterAvailable()
+					if (!openRouterAvailable) {
+						this.outputChannel.appendLine(
+							"[AID MCP] OPENROUTER_API_KEY not set. Some servers will be skipped.",
+						)
+					}
+				}
+				if (!openRouterAvailable) {
+					this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: OPENROUTER_API_KEY not set`)
+					continue
+				}
 			}
 
 			try {
@@ -259,6 +319,36 @@ export class AidMcpService implements vscode.Disposable {
 			proc.on("error", () => resolve(false))
 			proc.on("close", (code: number | null) => resolve(code === 0))
 		})
+	}
+
+	/**
+	 * Check if Qdrant is running and accessible.
+	 * Used by servers that require Qdrant (e.g., MCU Specs).
+	 */
+	private async checkQdrantAvailable(): Promise<boolean> {
+		const http = require("http")
+		return new Promise((resolve) => {
+			const req = http.get("http://localhost:6333/collections", (res: any) => {
+				if (res.statusCode === 200) {
+					resolve(true)
+				} else {
+					resolve(false)
+				}
+			})
+			req.on("error", () => resolve(false))
+			req.setTimeout(2000, () => {
+				req.destroy()
+				resolve(false)
+			})
+		})
+	}
+
+	/**
+	 * Check if OpenRouter API key is configured.
+	 * Used by servers that require OpenRouter for embeddings.
+	 */
+	private checkOpenRouterAvailable(): boolean {
+		return !!process.env.OPENROUTER_API_KEY
 	}
 
 	private getMcpServersPath(): string | null {

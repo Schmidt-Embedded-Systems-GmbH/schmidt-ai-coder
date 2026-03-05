@@ -85,3 +85,5 @@ __pycache__/
 .venv/
 .pytest_cache/
 fastmcp-llms-full.txt
+
+.mcu-specs/**
