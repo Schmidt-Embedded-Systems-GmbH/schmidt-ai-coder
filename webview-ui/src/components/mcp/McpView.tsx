@@ -330,13 +330,16 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 				<div
 					style={{ display: "flex", alignItems: "center", marginRight: "8px" }}
 					onClick={(e) => e.stopPropagation()}>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setShowDeleteConfirm(true)}
-						style={{ marginRight: "8px" }}>
-						<span className="codicon codicon-trash" style={{ fontSize: "14px" }}></span>
-					</Button>
+					{/* kilocode_change: hide delete button for builtin servers */}
+					{server.source !== "builtin" && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setShowDeleteConfirm(true)}
+							style={{ marginRight: "8px" }}>
+							<span className="codicon codicon-trash" style={{ fontSize: "14px" }}></span>
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						size="icon"

@@ -107,8 +107,9 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 		defaultPort: 8009,
 		folderName: "mcu-specs",
 		requiresWorkspace: false,
-		requiresQdrant: true,
-		requiresOpenRouter: true,
+		// Note: Qdrant and OpenRouter are required for full functionality,
+		// but we start the server anyway so it appears in the MCP list.
+		// Tools will return errors if dependencies aren't available.
 		startupArgs: (port: number) => [
 			"run",
 			"--frozen",

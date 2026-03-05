@@ -184,7 +184,7 @@ class QdrantStore:
     
     def get_chunks_by_section(self, doc_id: str, section_id: str) -> list[dict]:
         """Get all chunks for a section."""
-        query_filter = Filter(
+        scroll_filter = Filter(
             must=[
                 FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
                 FieldCondition(key="section_id", match=MatchValue(value=section_id)),
@@ -192,7 +192,7 @@ class QdrantStore:
         )
         results, _ = self.client.scroll(
             collection_name=CHUNKS_COLLECTION,
-            query_filter=query_filter,
+            scroll_filter=scroll_filter,
             limit=100,
             with_payload=True,
             with_vectors=False,
@@ -203,12 +203,12 @@ class QdrantStore:
         """Get chunks that overlap with specified pages."""
         # Note: This is a simplified approach - we get all chunks for the doc
         # and filter in Python. For large docs, this could be optimized.
-        query_filter = Filter(
+        scroll_filter = Filter(
             must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
         )
         results, _ = self.client.scroll(
             collection_name=CHUNKS_COLLECTION,
-            query_filter=query_filter,
+            scroll_filter=scroll_filter,
             limit=1000,
             with_payload=True,
             with_vectors=False,
@@ -245,15 +245,15 @@ class QdrantStore:
                 must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
             )
         
-        results = self.client.search(
+        results = self.client.query_points(
             collection_name=CHUNKS_COLLECTION,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=query_filter,
             limit=limit,
             with_payload=True,
         )
         
-        return [self._to_search_result(r) for r in results]
+        return [self._to_search_result(r) for r in results.points]
     
     def search_literal(
         self,
@@ -267,16 +267,16 @@ class QdrantStore:
         Automatically escapes special regex characters.
         """
         # Build filter for doc_id if provided
-        query_filter = None
+        scroll_filter = None
         if doc_id:
-            query_filter = Filter(
+            scroll_filter = Filter(
                 must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
             )
         
         # Scroll through chunks and filter by content match
         results, _ = self.client.scroll(
             collection_name=CHUNKS_COLLECTION,
-            query_filter=query_filter,
+            scroll_filter=scroll_filter,
             limit=1000,  # Scan more for literal matching
             with_payload=True,
             with_vectors=False,
