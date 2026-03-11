@@ -222,6 +222,12 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setIncludeCurrentTime: (value: boolean) => void
 	includeCurrentCost?: boolean
 	setIncludeCurrentCost: (value: boolean) => void
+	mcuSpecsQdrantUrl: string | undefined
+	mcuSpecsEmbeddingEndpoint: string | undefined
+	mcuSpecsEmbeddingModel: string | undefined
+	mcuSpecsStoragePath: string | undefined
+	mcuSpecsWorkspaceRoot: string | undefined
+	mcuSpecsEmbeddingApiKey: string | undefined
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -351,6 +357,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		codebaseIndexModels: { ollama: {}, openai: {} },
 		includeDiagnosticMessages: true,
 		maxDiagnosticMessages: 50,
+		mcuSpecsQdrantUrl: "http://localhost:6333",
+		mcuSpecsEmbeddingEndpoint: "https://openrouter.ai/api/v1",
+		mcuSpecsEmbeddingModel: "openai/text-embedding-3-small",
+		mcuSpecsStoragePath: ".mcu-specs",
+		mcuSpecsWorkspaceRoot: "",
+		mcuSpecsEmbeddingApiKey: "",
 		openRouterImageApiKey: "",
 		kiloCodeImageApiKey: "",
 		// kilocode_change start - Auto Purge
@@ -661,7 +673,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				}
 			})
 		},
-		setAutocompleteServiceSettings: (value) => setState((prevState) => ({ ...prevState, ghostServiceSettings: value })),
+		setAutocompleteServiceSettings: (value) =>
+			setState((prevState) => ({ ...prevState, ghostServiceSettings: value })),
 		setCommitMessageApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, commitMessageApiConfigId: value })),
 		setShowAutoApproveMenu: (value) => setState((prevState) => ({ ...prevState, showAutoApproveMenu: value })),
@@ -756,6 +769,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setIncludeCurrentTime,
 		includeCurrentCost,
 		setIncludeCurrentCost,
+		mcuSpecsQdrantUrl: state.mcuSpecsQdrantUrl,
+		mcuSpecsEmbeddingEndpoint: state.mcuSpecsEmbeddingEndpoint,
+		mcuSpecsEmbeddingModel: state.mcuSpecsEmbeddingModel,
+		mcuSpecsStoragePath: state.mcuSpecsStoragePath,
+		mcuSpecsWorkspaceRoot: state.mcuSpecsWorkspaceRoot,
+		mcuSpecsEmbeddingApiKey: state.mcuSpecsEmbeddingApiKey,
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

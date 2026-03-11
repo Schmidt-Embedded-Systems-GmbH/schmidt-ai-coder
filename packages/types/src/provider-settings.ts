@@ -705,6 +705,12 @@ export const providerSettingsSchema = z.object({
 	...sapAiCoreSchema.shape, // kilocode_change
 	...codebaseIndexProviderSchema.shape,
 	...inceptionSchema.shape,
+	mcuSpecsQdrantUrl: z.string().optional(), // kilocode_change
+	mcuSpecsEmbeddingEndpoint: z.string().optional(), // kilocode_change
+	mcuSpecsEmbeddingModel: z.string().optional(), // kilocode_change
+	mcuSpecsStoragePath: z.string().optional(), // kilocode_change
+	mcuSpecsWorkspaceRoot: z.string().optional(), // kilocode_change
+	mcuSpecsEmbeddingApiKey: z.string().optional(), // kilocode_change
 })
 
 export type ProviderSettings = z.infer<typeof providerSettingsSchema>

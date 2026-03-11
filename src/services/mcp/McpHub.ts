@@ -41,6 +41,7 @@ import { injectVariables } from "../../utils/config"
 import { NotificationService } from "./schmidtaicoder/NotificationService"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName } from "../../utils/mcp-name"
+import { AID_BUILTIN_SERVER_KEYS } from "../schmidtaicoder/AidMcpService"
 // kilocode_change start - MCP OAuth Authorization
 import { McpOAuthService, OAuthTokens } from "./oauth"
 // kilocode_change end
@@ -914,28 +915,46 @@ export class McpHub {
 	}
 
 	getServers(): McpServer[] {
-		// Only return enabled servers, deduplicating by name with project servers taking priority
+		// Only return enabled servers, deduplicating by name with project > builtin > global priority
 		const enabledConnections = this.connections.filter((conn) => !conn.server.disabled)
 
-		// Deduplicate by server name: project servers take priority over global servers
+		// Deduplicate by server name: project > builtin > global priority
+		// kilocode_change: handle builtin source in deduplication
 		const serversByName = new Map<string, McpServer>()
 		for (const conn of enabledConnections) {
 			const existing = serversByName.get(conn.server.name)
 			if (!existing) {
 				serversByName.set(conn.server.name, conn.server)
 			} else if (conn.server.source === "project" && existing.source !== "project") {
-				// Project server overrides global server with the same name
+				// Project server overrides builtin or global server with the same name
+				serversByName.set(conn.server.name, conn.server)
+			} else if (conn.server.source === "builtin" && existing.source === "global") {
+				// Builtin server overrides global server with the same name
 				serversByName.set(conn.server.name, conn.server)
 			}
-			// If existing is project and current is global, keep existing (project wins)
+			// If existing is project or builtin, and current is lower priority, keep existing
 		}
 
 		return Array.from(serversByName.values())
 	}
 
 	getAllServers(): McpServer[] {
-		// Return all servers regardless of state
-		return this.connections.map((conn) => conn.server)
+		// Return all servers regardless of state, deduplicating by name with project > builtin > global priority
+		// kilocode_change: handle builtin source in deduplication
+		const serversByName = new Map<string, McpServer>()
+		for (const conn of this.connections) {
+			const existing = serversByName.get(conn.server.name)
+			if (!existing) {
+				serversByName.set(conn.server.name, conn.server)
+			} else if (conn.server.source === "project" && existing.source !== "project") {
+				// Project server overrides builtin or global server with the same name
+				serversByName.set(conn.server.name, conn.server)
+			} else if (conn.server.source === "builtin" && existing.source === "global") {
+				// Builtin server overrides global server with the same name
+				serversByName.set(conn.server.name, conn.server)
+			}
+		}
+		return Array.from(serversByName.values())
 	}
 
 	async getMcpServersPath(): Promise<string> {
@@ -1805,6 +1824,16 @@ export class McpHub {
 
 		// Update or add servers
 		for (const [name, config] of Object.entries(newServers)) {
+			// kilocode_change start - prevent builtin AID servers from also being instantiated as global/project
+			if (source !== "builtin" && AID_BUILTIN_SERVER_KEYS.has(name)) {
+				this.logDiag(
+					name,
+					"skip-nonbuiltin-duplicate",
+					`skipping ${source} server because name is reserved for builtin AID MCP server`,
+				)
+				continue
+			}
+			// kilocode_change end
 			// Only consider connections that match the current source
 			const currentConnection = this.findConnection(name, source)
 
@@ -2094,10 +2123,22 @@ export class McpHub {
 		}
 
 		// Sort connections: first project servers in their defined order, then global servers in their defined order
-		// This ensures that when servers have the same name, project servers are prioritized
+		// Builtin servers come last. This ensures that when servers have the same name, project servers are prioritized.
+		// kilocode_change: handle builtin source servers in sorting
 		const sortedConnections = [...this.connections].sort((a, b) => {
+			const aIsBuiltin = a.server.source === "builtin"
+			const bIsBuiltin = b.server.source === "builtin"
 			const aIsGlobal = a.server.source === "global" || !a.server.source
 			const bIsGlobal = b.server.source === "global" || !b.server.source
+
+			// Builtin servers always come last
+			if (aIsBuiltin && !bIsBuiltin) return 1
+			if (!aIsBuiltin && bIsBuiltin) return -1
+
+			// If both are builtin, sort by name
+			if (aIsBuiltin && bIsBuiltin) {
+				return a.server.name.localeCompare(b.server.name)
+			}
 
 			// If both are global or both are project, sort by their respective order
 			if (aIsGlobal && bIsGlobal) {
@@ -2346,6 +2387,14 @@ export class McpHub {
 			}
 
 			const serverSource = connection.server.source || "global"
+
+			// kilocode_change: prevent deletion of builtin servers
+			if (serverSource === "builtin") {
+				throw new Error(
+					`Cannot delete builtin server ${serverName}. Builtin servers are managed by the extension.`,
+				)
+			}
+
 			// Determine config file based on server source
 			const isProjectServer = serverSource === "project"
 			let configPath: string

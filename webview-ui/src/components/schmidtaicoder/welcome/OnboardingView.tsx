@@ -38,11 +38,12 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onSelectFreeModels, onS
 
 	return (
 		<div className="flex flex-col items-center justify-center min-h-screen p-6 bg-vscode-sideBar-background">
-			<Logo width={80} height={80} />
-
-			<h1 className="text-2xl font-bold text-vscode-foreground text-center mt-4 mb-10">
-				{t("kilocode:onboarding.title")}
-			</h1>
+			<div className="flex flex-col items-center gap-3 mb-10">
+				<Logo width={140} height={42} />
+				<h1 className="text-2xl font-bold text-vscode-foreground text-center m-0">
+					{t("kilocode:onboarding.title")}
+				</h1>
+			</div>
 
 			<div className="w-full max-w-md flex flex-col gap-4">
 				<OnboardingOption

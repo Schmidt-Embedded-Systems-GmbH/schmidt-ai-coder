@@ -27,6 +27,7 @@
 	},
 	"sections": {
 		"providers": "Providers",
+		"mcuSpecs": "MCU Specs",
 		"modes": "Modes",
 		"mcp": "MCP Servers",
 		"autoApprove": "Auto-Approve",
@@ -45,6 +46,40 @@
 		"autoPurge": "Auto-Cleanup",
 		"agentBehaviour": "Agent Behaviour",
 		"autocomplete": "Autocomplete"
+	},
+	"mcuSpecs": {
+		"description": "Configure the bundled MCU Specs MCP server for Qdrant-backed specification search and embeddings.",
+		"qdrantUrl": {
+			"label": "Qdrant URL",
+			"placeholder": "http://localhost:6333",
+			"description": "HTTP endpoint of the Qdrant instance that stores specification embeddings."
+		},
+		"embeddingApiKey": {
+			"label": "Embedding API Key",
+			"placeholder": "Enter API key for embeddings",
+			"description": "Optional override for the embedding provider key. Stored securely in VS Code Secret Storage.",
+			"fallbackNotice": "No dedicated MCU Specs embedding key is set. Schmidt AI Coder will fall back to the configured OpenRouter API key."
+		},
+		"embeddingEndpoint": {
+			"label": "Embedding Endpoint",
+			"placeholder": "https://openrouter.ai/api/v1",
+			"description": "Base URL used by the MCU Specs server for embedding requests."
+		},
+		"embeddingModel": {
+			"label": "Embedding Model",
+			"placeholder": "openai/text-embedding-3-small",
+			"description": "Embedding model identifier used for semantic search and ingestion."
+		},
+		"storagePath": {
+			"label": "Storage Path",
+			"placeholder": ".mcu-specs",
+			"description": "Local storage directory used by the server for PDFs and metadata."
+		},
+		"workspaceRoot": {
+			"label": "Workspace Root Override",
+			"placeholder": "/path/to/workspace",
+			"description": "Optional override passed to the MCP server when it needs to resolve workspace-relative content."
+		}
 	},
 	"about": {
 		"bugReport": {

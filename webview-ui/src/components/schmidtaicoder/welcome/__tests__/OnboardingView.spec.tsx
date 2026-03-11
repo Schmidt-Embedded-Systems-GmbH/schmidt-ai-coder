@@ -6,7 +6,7 @@ import OnboardingView from "../OnboardingView"
 
 // Mock Logo component
 vi.mock("../../common/Logo", () => ({
-	default: () => <div data-testid="schmidt-ai-logo">Kilo Logo</div>,
+	default: () => <div data-testid="schmidt-ai-logo">Schmidt AI Logo</div>,
 }))
 
 describe("OnboardingView", () => {

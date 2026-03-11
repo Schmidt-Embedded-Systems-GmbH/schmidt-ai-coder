@@ -18,6 +18,8 @@ interface AidServerDefinition {
 	defaultPort: number
 	folderName: string
 	requiresWorkspace: boolean
+	requiresQdrant?: boolean // Server needs Qdrant running
+	requiresOpenRouter?: boolean // Server needs OPENROUTER_API_KEY
 	startupArgs?: (port: number) => string[]
 	toolTimeout?: number // in seconds (McpHub schema max: 3600)
 }
@@ -98,6 +100,29 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 			port.toString(),
 		],
 	},
+	{
+		key: "aid-mcu-specs",
+		displayName: "MCU Specs",
+		description: "Datasheet search engine for microcontroller specifications",
+		defaultPort: 8009,
+		folderName: "mcu-specs",
+		requiresWorkspace: false,
+		toolTimeout: 1800, // 30 min for large datasheet ingestion
+		// Note: Qdrant and OpenRouter are required for full functionality,
+		// but we start the server anyway so it appears in the MCP list.
+		// Tools will return errors if dependencies aren't available.
+		startupArgs: (port: number) => [
+			"run",
+			"--frozen",
+			"fastmcp",
+			"run",
+			"main.py",
+			"-t",
+			"http",
+			"-p",
+			port.toString(),
+		],
+	},
 ]
 
 function getDefaultStartupArgs(port: number): string[] {
@@ -115,11 +140,16 @@ interface RunningServer {
 const BUILTIN_SOURCE: McpSource = "builtin"
 const SERVER_STARTUP_DELAY_MS = 3000
 
+// kilocode_change start - shared builtin server key registry
+export const AID_BUILTIN_SERVER_KEYS = new Set(AID_MCP_SERVERS.map((server) => server.key))
+// kilocode_change end
+
 export class AidMcpService implements vscode.Disposable {
 	private static instance: AidMcpService | undefined
 	private runningServers: RunningServer[] = []
 	private outputChannels = new Map<string, vscode.OutputChannel>()
 	private disposed = false
+	private providerRef?: WeakRef<ClineProvider>
 
 	private constructor(
 		private readonly context: vscode.ExtensionContext,
@@ -142,6 +172,8 @@ export class AidMcpService implements vscode.Disposable {
 			return
 		}
 
+		this.providerRef = new WeakRef(provider)
+
 		const uvAvailable = await this.checkUvAvailable()
 		if (!uvAvailable) {
 			this.outputChannel.appendLine(
@@ -160,10 +192,47 @@ export class AidMcpService implements vscode.Disposable {
 		const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null
 		this.outputChannel.appendLine(`[AID MCP] Starting servers from ${mcpServersPath}`)
 
+		// Pre-check dependencies for servers that need them
+		let qdrantAvailable: boolean | undefined
+		let openRouterAvailable: boolean | undefined
+
 		for (const def of AID_MCP_SERVERS) {
+			// Check workspace requirement
 			if (def.requiresWorkspace && !workspaceRoot) {
 				this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: no workspace folder open`)
 				continue
+			}
+
+			// Check Qdrant requirement
+			if (def.requiresQdrant) {
+				if (qdrantAvailable === undefined) {
+					qdrantAvailable = await this.checkQdrantAvailable()
+					if (!qdrantAvailable) {
+						this.outputChannel.appendLine(
+							"[AID MCP] Qdrant not available. Run: docker run -p 6333:6333 qdrant/qdrant",
+						)
+					}
+				}
+				if (!qdrantAvailable) {
+					this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: Qdrant not running`)
+					continue
+				}
+			}
+
+			// Check OpenRouter API key requirement
+			if (def.requiresOpenRouter) {
+				if (openRouterAvailable === undefined) {
+					openRouterAvailable = this.checkOpenRouterAvailable()
+					if (!openRouterAvailable) {
+						this.outputChannel.appendLine(
+							"[AID MCP] OPENROUTER_API_KEY not set. Some servers will be skipped.",
+						)
+					}
+				}
+				if (!openRouterAvailable) {
+					this.outputChannel.appendLine(`[AID MCP] Skipping ${def.displayName}: OPENROUTER_API_KEY not set`)
+					continue
+				}
 			}
 
 			try {
@@ -261,6 +330,70 @@ export class AidMcpService implements vscode.Disposable {
 		})
 	}
 
+	/**
+	 * Check if Qdrant is running and accessible.
+	 * Used by servers that require Qdrant (e.g., MCU Specs).
+	 */
+	private async checkQdrantAvailable(): Promise<boolean> {
+		const http = require("http")
+		return new Promise((resolve) => {
+			const req = http.get("http://localhost:6333/collections", (res: any) => {
+				if (res.statusCode === 200) {
+					resolve(true)
+				} else {
+					resolve(false)
+				}
+			})
+			req.on("error", () => resolve(false))
+			req.setTimeout(2000, () => {
+				req.destroy()
+				resolve(false)
+			})
+		})
+	}
+
+	/**
+	 * Check if OpenRouter API key is configured.
+	 * Used by servers that require OpenRouter for embeddings.
+	 */
+	private checkOpenRouterAvailable(): boolean {
+		return !!process.env.OPENROUTER_API_KEY
+	}
+
+	private async resolveMcuSpecsEnvironment(workspaceRoot: string | null): Promise<Record<string, string>> {
+		const contextProxy = this.providerRef?.deref()?.contextProxy
+		const providerSettings = contextProxy?.getProviderSettings()
+		const qdrantUrl = providerSettings?.mcuSpecsQdrantUrl?.trim() || "http://localhost:6333"
+		const embeddingEndpoint = providerSettings?.mcuSpecsEmbeddingEndpoint?.trim() || "https://openrouter.ai/api/v1"
+		const embeddingModel = providerSettings?.mcuSpecsEmbeddingModel?.trim() || "openai/text-embedding-3-small"
+		const storagePath = providerSettings?.mcuSpecsStoragePath?.trim() || ".mcu-specs"
+		const resolvedWorkspaceRoot = providerSettings?.mcuSpecsWorkspaceRoot?.trim() || workspaceRoot || ""
+		const embeddingApiKey =
+			providerSettings?.mcuSpecsEmbeddingApiKey?.trim() ||
+			providerSettings?.openRouterApiKey?.trim() ||
+			process.env.OPENROUTER_API_KEY ||
+			""
+
+		return {
+			MCU_SPECS_QDRANT_URL: qdrantUrl,
+			MCU_SPECS_EMBEDDING_ENDPOINT: embeddingEndpoint,
+			MCU_SPECS_EMBEDDING_MODEL: embeddingModel,
+			MCU_SPECS_STORAGE_PATH: storagePath,
+			...(resolvedWorkspaceRoot
+				? {
+						MCU_SPECS_WORKSPACE_ROOT: resolvedWorkspaceRoot,
+						AID_WORKSPACE_ROOT: resolvedWorkspaceRoot,
+					}
+				: {}),
+			...(embeddingApiKey
+				? {
+						MCU_SPECS_EMBEDDING_API_KEY: embeddingApiKey,
+						OPENROUTER_API_KEY: embeddingApiKey,
+					}
+				: {}),
+		}
+	}
+
 	private getMcpServersPath(): string | null {
 		// In dev mode, use the mcp-servers/ source directly
 		const devPath = path.join(this.context.extensionPath, "..", "mcp-servers")
@@ -298,6 +431,9 @@ export class AidMcpService implements vscode.Disposable {
 			env.AID_WORKSPACE_ROOT = workspaceRoot
 		}
 		env.FASTMCP_STATELESS_HTTP = "true"
+		if (def.key === "aid-mcu-specs") {
+			Object.assign(env, await this.resolveMcuSpecsEnvironment(workspaceRoot))
+		}
 
 		const child = spawn("uv", args, {
 			cwd: workingDir,
