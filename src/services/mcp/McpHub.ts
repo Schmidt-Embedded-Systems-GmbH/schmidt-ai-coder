@@ -41,6 +41,7 @@ import { injectVariables } from "../../utils/config"
 import { NotificationService } from "./schmidtaicoder/NotificationService"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName } from "../../utils/mcp-name"
+import { AID_BUILTIN_SERVER_KEYS } from "../schmidtaicoder/AidMcpService"
 // kilocode_change start - MCP OAuth Authorization
 import { McpOAuthService, OAuthTokens } from "./oauth"
 // kilocode_change end
@@ -1823,6 +1824,16 @@ export class McpHub {
 
 		// Update or add servers
 		for (const [name, config] of Object.entries(newServers)) {
+			// kilocode_change start - prevent builtin AID servers from also being instantiated as global/project
+			if (source !== "builtin" && AID_BUILTIN_SERVER_KEYS.has(name)) {
+				this.logDiag(
+					name,
+					"skip-nonbuiltin-duplicate",
+					`skipping ${source} server because name is reserved for builtin AID MCP server`,
+				)
+				continue
+			}
+			// kilocode_change end
 			// Only consider connections that match the current source
 			const currentConnection = this.findConnection(name, source)
 

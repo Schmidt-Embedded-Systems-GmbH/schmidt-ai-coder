@@ -1797,6 +1797,10 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("morphApiKey", message.text)
 			await provider.postStateToWebview()
 			break
+		case "mcuSpecsEmbeddingApiKey":
+			await provider.contextProxy.storeSecret("mcuSpecsEmbeddingApiKey", message.text)
+			await provider.postStateToWebview()
+			break
 		case "fastApplyModel": {
 			const nextModel = fastApplyModelSchema.safeParse(message.text).data ?? "auto"
 			await updateGlobalState("fastApplyModel", nextModel)

@@ -163,6 +163,12 @@ export const globalSettingsSchema = z.object({
 	autoPurgeIncompleteTaskRetentionDays: z.number().min(1).optional(),
 	autoPurgeLastRunTimestamp: z.number().optional(),
 	// kilocode_change end
+	mcuSpecsQdrantUrl: z.string().optional(),
+	mcuSpecsEmbeddingEndpoint: z.string().optional(),
+	mcuSpecsEmbeddingModel: z.string().optional(),
+	mcuSpecsStoragePath: z.string().optional(),
+	mcuSpecsWorkspaceRoot: z.string().optional(),
+	mcuSpecsEmbeddingApiKey: z.string().optional(),
 
 	ttsEnabled: z.boolean().optional(),
 	ttsSpeed: z.number().optional(),
@@ -316,6 +322,7 @@ export const SECRET_STATE_KEYS = [
 	"basetenApiKey",
 	"codebaseIndexVoyageApiKey", // kilocode_change
 	"corethinkApiKey",
+	"mcuSpecsEmbeddingApiKey", // kilocode_change
 ] as const
 
 // Global secrets that are part of GlobalSettings (not ProviderSettings)

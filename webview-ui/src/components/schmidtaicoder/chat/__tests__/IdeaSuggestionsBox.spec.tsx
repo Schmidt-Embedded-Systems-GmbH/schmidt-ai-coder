@@ -11,29 +11,12 @@ vi.mock("@/utils/vscode", () => ({
 		postMessage: vi.fn(),
 	},
 }))
-
-// Mock i18next before importing the component (it uses i18next.t at module level)
-vi.mock("i18next", () => ({
-	default: {
+vi.mock("@/i18n/TranslationContext", () => ({
+	useAppTranslation: () => ({
 		t: (key: string, options?: any) => {
-			if (key === "ideaSuggestionsBox.ideas" && options?.returnObjects) {
-				return {
-					idea1: "Create a portfolio website",
-					idea2: "Build a todo app",
-					idea3: "Make a calculator",
-				}
-			}
-			return key
-		},
-	},
-}))
-
-vi.mock("react-i18next", () => ({
-	useTranslation: () => ({
-		t: (key: string, options?: any) => {
-			if (key === "ideaSuggestionsBox.newHere") return "New here?"
-			if (key === "ideaSuggestionsBox.tryOneOfThese") return "Try one of these ideas to get started:"
-			if (key === "ideaSuggestionsBox.ideas" && options?.returnObjects) {
+			if (key === "kilocode:ideaSuggestionsBox.newHere") return "New here?"
+			if (key === "kilocode:ideaSuggestionsBox.tryOneOfThese") return "Try one of these ideas to get started:"
+			if (key === "kilocode:ideaSuggestionsBox.ideas" && options?.returnObjects) {
 				return {
 					idea1: "Create a portfolio website",
 					idea2: "Build a todo app",
@@ -45,7 +28,6 @@ vi.mock("react-i18next", () => ({
 	}),
 }))
 
-// Import component after mocks are set up
 import { IdeaSuggestionsBox } from "../IdeaSuggestionsBox"
 
 describe("IdeaSuggestionsBox", () => {
@@ -118,5 +100,15 @@ describe("IdeaSuggestionsBox", () => {
 
 		const buttons = screen.getAllByRole("button")
 		expect(buttons).toHaveLength(2)
+	})
+
+	it("should not render a lightbulb icon in suggestion cards", () => {
+		vi.mocked(useTaskHistory).mockReturnValue({
+			data: { historyItems: [] },
+		} as any)
+
+		const { container } = render(<IdeaSuggestionsBox />)
+
+		expect(container.querySelector("svg.lucide-lightbulb")).not.toBeInTheDocument()
 	})
 })

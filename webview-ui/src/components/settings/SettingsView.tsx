@@ -86,6 +86,7 @@ import { AutocompleteServiceSettingsView } from "../schmidtaicoder/settings/Auto
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { UISettings } from "./UISettings"
 import AgentBehaviourView from "../schmidtaicoder/settings/AgentBehaviourView" // kilocode_change - new combined view
+import { McuSpecsSettings } from "../schmidtaicoder/settings/McuSpecsSettings" // kilocode_change
 // import ModesView from "../modes/ModesView" // kilocode_change - now used inside AgentBehaviourView
 // import McpView from "../mcp/McpView" // kilocode_change: own view
 import { SettingsSearch } from "./SettingsSearch"
@@ -105,6 +106,7 @@ export interface SettingsViewRef {
 
 export const sectionNames = [
 	"providers",
+	"mcuSpecs",
 	"autoApprove",
 	"slashCommands",
 	"browser",
@@ -194,6 +196,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 		diffEnabled,
 		experiments,
 		morphApiKey, // kilocode_change
+		mcuSpecsQdrantUrl,
+		mcuSpecsEmbeddingEndpoint,
+		mcuSpecsEmbeddingModel,
+		mcuSpecsStoragePath,
+		mcuSpecsWorkspaceRoot,
+		mcuSpecsEmbeddingApiKey,
 		fastApplyModel, // kilocode_change: Fast Apply model selection
 		fastApplyApiProvider, // kilocode_change: Fast Apply model api base url
 		fuzzyMatchThreshold,
@@ -604,6 +612,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 					imageGenerationProvider,
 					openRouterImageApiKey,
 					openRouterImageGenerationSelectedModel,
+					mcuSpecsQdrantUrl,
+					mcuSpecsEmbeddingEndpoint,
+					mcuSpecsEmbeddingModel,
+					mcuSpecsStoragePath,
+					mcuSpecsWorkspaceRoot,
 					experiments,
 					customSupportPrompts,
 				},
@@ -628,6 +641,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 			vscode.postMessage({ type: "systemNotificationsEnabled", bool: systemNotificationsEnabled }) // kilocode_change
 			vscode.postMessage({ type: "ghostServiceSettings", values: ghostServiceSettings }) // kilocode_change
 			vscode.postMessage({ type: "morphApiKey", text: morphApiKey }) // kilocode_change
+			vscode.postMessage({ type: "mcuSpecsEmbeddingApiKey", text: mcuSpecsEmbeddingApiKey || "" }) // kilocode_change
 			vscode.postMessage({ type: "fastApplyModel", text: fastApplyModel }) // kilocode_change: Fast Apply model selection
 			vscode.postMessage({ type: "fastApplyApiProvider", text: fastApplyApiProvider }) // kilocode_change: Fast Apply model api base url
 			vscode.postMessage({ type: "kiloCodeImageApiKey", text: kiloCodeImageApiKey })
@@ -761,6 +775,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 	const sections: { id: SectionName; icon: LucideIcon }[] = useMemo(
 		() => [
 			{ id: "providers", icon: Plug },
+			{ id: "mcuSpecs", icon: Database },
 			{ id: "agentBehaviour", icon: Users2 }, // kilocode_change - renamed from "modes" and merged with "mcp"
 			{ id: "autoApprove", icon: CheckCheck },
 			// { id: "slashCommands", icon: SquareSlash }, // kilocode_change: needs work to be re-introduced
@@ -1107,6 +1122,19 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>((props, ref)
 									{/* kilocode_change end - pass editing profile name */}
 								</Section>
 							</div>
+						)}
+
+						{activeTab === "mcuSpecs" && (
+							<McuSpecsSettings
+								mcuSpecsQdrantUrl={mcuSpecsQdrantUrl}
+								mcuSpecsEmbeddingEndpoint={mcuSpecsEmbeddingEndpoint}
+								mcuSpecsEmbeddingModel={mcuSpecsEmbeddingModel}
+								mcuSpecsStoragePath={mcuSpecsStoragePath}
+								mcuSpecsWorkspaceRoot={mcuSpecsWorkspaceRoot}
+								mcuSpecsEmbeddingApiKey={mcuSpecsEmbeddingApiKey}
+								openRouterApiKey={apiConfiguration.openRouterApiKey}
+								setCachedStateField={setCachedStateField}
+							/>
 						)}
 
 						{/* Auto-Approve Section */}

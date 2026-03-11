@@ -107,6 +107,7 @@ const AID_MCP_SERVERS: AidServerDefinition[] = [
 		defaultPort: 8009,
 		folderName: "mcu-specs",
 		requiresWorkspace: false,
+		toolTimeout: 1800, // 30 min for large datasheet ingestion
 		// Note: Qdrant and OpenRouter are required for full functionality,
 		// but we start the server anyway so it appears in the MCP list.
 		// Tools will return errors if dependencies aren't available.
@@ -139,11 +140,16 @@ interface RunningServer {
 const BUILTIN_SOURCE: McpSource = "builtin"
 const SERVER_STARTUP_DELAY_MS = 3000
 
+// kilocode_change start - shared builtin server key registry
+export const AID_BUILTIN_SERVER_KEYS = new Set(AID_MCP_SERVERS.map((server) => server.key))
+// kilocode_change end
+
 export class AidMcpService implements vscode.Disposable {
 	private static instance: AidMcpService | undefined
 	private runningServers: RunningServer[] = []
 	private outputChannels = new Map<string, vscode.OutputChannel>()
 	private disposed = false
+	private providerRef?: WeakRef<ClineProvider>
 
 	private constructor(
 		private readonly context: vscode.ExtensionContext,
@@ -165,6 +171,8 @@ export class AidMcpService implements vscode.Disposable {
 		if (this.disposed) {
 			return
 		}
+
+		this.providerRef = new WeakRef(provider)
 
 		const uvAvailable = await this.checkUvAvailable()
 		if (!uvAvailable) {
@@ -352,6 +360,40 @@ export class AidMcpService implements vscode.Disposable {
 		return !!process.env.OPENROUTER_API_KEY
 	}
 
+	private async resolveMcuSpecsEnvironment(workspaceRoot: string | null): Promise<Record<string, string>> {
+		const contextProxy = this.providerRef?.deref()?.contextProxy
+		const providerSettings = contextProxy?.getProviderSettings()
+		const qdrantUrl = providerSettings?.mcuSpecsQdrantUrl?.trim() || "http://localhost:6333"
+		const embeddingEndpoint = providerSettings?.mcuSpecsEmbeddingEndpoint?.trim() || "https://openrouter.ai/api/v1"
+		const embeddingModel = providerSettings?.mcuSpecsEmbeddingModel?.trim() || "openai/text-embedding-3-small"
+		const storagePath = providerSettings?.mcuSpecsStoragePath?.trim() || ".mcu-specs"
+		const resolvedWorkspaceRoot = providerSettings?.mcuSpecsWorkspaceRoot?.trim() || workspaceRoot || ""
+		const embeddingApiKey =
+			providerSettings?.mcuSpecsEmbeddingApiKey?.trim() ||
+			providerSettings?.openRouterApiKey?.trim() ||
+			process.env.OPENROUTER_API_KEY ||
+			""
+
+		return {
+			MCU_SPECS_QDRANT_URL: qdrantUrl,
+			MCU_SPECS_EMBEDDING_ENDPOINT: embeddingEndpoint,
+			MCU_SPECS_EMBEDDING_MODEL: embeddingModel,
+			MCU_SPECS_STORAGE_PATH: storagePath,
+			...(resolvedWorkspaceRoot
+				? {
+						MCU_SPECS_WORKSPACE_ROOT: resolvedWorkspaceRoot,
+						AID_WORKSPACE_ROOT: resolvedWorkspaceRoot,
+					}
+				: {}),
+			...(embeddingApiKey
+				? {
+						MCU_SPECS_EMBEDDING_API_KEY: embeddingApiKey,
+						OPENROUTER_API_KEY: embeddingApiKey,
+					}
+				: {}),
+		}
+	}
+
 	private getMcpServersPath(): string | null {
 		// In dev mode, use the mcp-servers/ source directly
 		const devPath = path.join(this.context.extensionPath, "..", "mcp-servers")
@@ -389,6 +431,9 @@ export class AidMcpService implements vscode.Disposable {
 			env.AID_WORKSPACE_ROOT = workspaceRoot
 		}
 		env.FASTMCP_STATELESS_HTTP = "true"
+		if (def.key === "aid-mcu-specs") {
+			Object.assign(env, await this.resolveMcuSpecsEnvironment(workspaceRoot))
+		}
 
 		const child = spawn("uv", args, {
 			cwd: workingDir,

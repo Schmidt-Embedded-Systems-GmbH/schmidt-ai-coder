@@ -30,6 +30,10 @@ vi.mock("../ApiConfigManager", () => ({
 	),
 }))
 
+vi.mock("../../schmidtaicoder/settings/McuSpecsSettings", () => ({
+	McuSpecsSettings: () => <div data-testid="mcu-specs-settings">MCU Specs Settings</div>,
+}))
+
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeButton: ({ children, onClick, appearance, "data-testid": dataTestId }: any) =>
 		appearance === "icon" ? (
@@ -640,6 +644,18 @@ describe("SettingsView - Allowed Commands", () => {
 
 			// Verify browser-related content is visible and API config is not
 			expect(screen.queryByTestId("api-config-management")).not.toBeInTheDocument()
+		})
+
+		it("renders MCU Specs target section", () => {
+			render(
+				<ExtensionStateContextProvider>
+					<QueryClientProvider client={new QueryClient()}>
+						<SettingsView onDone={vi.fn()} targetSection="mcuSpecs" />
+					</QueryClientProvider>
+				</ExtensionStateContextProvider>,
+			)
+
+			expect(screen.getByTestId("mcu-specs-settings")).toBeInTheDocument()
 		})
 	})
 })

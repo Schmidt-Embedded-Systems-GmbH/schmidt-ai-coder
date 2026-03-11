@@ -93,6 +93,9 @@ vi.mock("../ApiOptions", () => ({
 vi.mock("../AutoApproveSettings", () => ({
 	AutoApproveSettings: vi.fn(() => <div>AutoApproveSettings</div>),
 }))
+vi.mock("../../schmidtaicoder/settings/McuSpecsSettings", () => ({
+	McuSpecsSettings: vi.fn(() => <div>McuSpecsSettings</div>),
+}))
 vi.mock("../BrowserSettings", () => ({
 	BrowserSettings: vi.fn(() => <div>BrowserSettings</div>),
 }))

@@ -232,6 +232,7 @@ export interface ExtensionMessage {
 		| "autoPurgeCompletedTaskRetentionDays" // kilocode_change
 		| "autoPurgeIncompleteTaskRetentionDays" // kilocode_change
 		| "manualPurge" // kilocode_change
+		| "mcuSpecsEmbeddingApiKey" // kilocode_change
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
@@ -560,6 +561,12 @@ export type ExtensionState = Pick<
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
 	| "imageGenerationProvider"
+	| "mcuSpecsQdrantUrl"
+	| "mcuSpecsEmbeddingEndpoint"
+	| "mcuSpecsEmbeddingModel"
+	| "mcuSpecsStoragePath"
+	| "mcuSpecsWorkspaceRoot"
+	| "mcuSpecsEmbeddingApiKey"
 	| "openRouterImageGenerationSelectedModel"
 	| "includeTaskHistoryInEnhance"
 	| "reasoningBlockCollapsed"
@@ -906,6 +913,7 @@ export interface WebviewMessage {
 		| "autoPurgeCompletedTaskRetentionDays" // kilocode_change
 		| "autoPurgeIncompleteTaskRetentionDays" // kilocode_change
 		| "manualPurge" // kilocode_change
+		| "mcuSpecsEmbeddingApiKey" // kilocode_change
 		| "shareTaskSuccess" // kilocode_change
 		| "shareTaskSuccess"
 		| "exportMode"
