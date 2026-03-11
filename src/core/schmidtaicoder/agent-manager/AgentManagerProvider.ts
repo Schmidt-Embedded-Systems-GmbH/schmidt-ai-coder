@@ -1837,7 +1837,7 @@ export class AgentManagerProvider implements vscode.Disposable {
 			return this.getHtmlContent(webview)
 		}
 
-		const { localServerUrl, csp, reactRefreshScript } = viteConfig
+		const { localServerUrl, csp, reactRefreshScript, nonce } = viteConfig
 
 		// Include both shared base styles (index.css with codicons) and agent-manager specific styles
 		const baseStylesUri = getUri(webview, this.context.extensionUri, ["webview-ui", "build", "assets", "index.css"])
@@ -1847,6 +1847,7 @@ export class AgentManagerProvider implements vscode.Disposable {
 			"assets",
 			"agent-manager.css",
 		])
+		const iconsUri = getUri(webview, this.context.extensionUri, ["assets", "icons"]) // kilocode_change
 
 		const scriptUri = `http://${localServerUrl}/src/schmidtaicoder/agent-manager/index.tsx`
 
@@ -1859,6 +1860,9 @@ export class AgentManagerProvider implements vscode.Disposable {
 					<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">
 					<link rel="stylesheet" type="text/css" href="${baseStylesUri}">
 					<link rel="stylesheet" type="text/css" href="${stylesUri}">
+					<script nonce="${nonce}">
+						window.ICONS_BASE_URI = "${iconsUri}"
+					</script>
 					<title>Agent Manager</title>
 				</head>
 				<body>
@@ -1886,6 +1890,7 @@ export class AgentManagerProvider implements vscode.Disposable {
 			"assets",
 			"agent-manager.css",
 		])
+		const iconsUri = getUri(webview, this.context.extensionUri, ["assets", "icons"]) // kilocode_change
 
 		const nonce = getNonce()
 
@@ -1894,10 +1899,13 @@ export class AgentManagerProvider implements vscode.Disposable {
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; script-src ${webview.cspSource} 'nonce-${nonce}';">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; font-src ${webview.cspSource}; img-src ${webview.cspSource} data:; script-src ${webview.cspSource} 'nonce-${nonce}';"> <!-- kilocode_change -->
 	<title>Agent Manager</title>
 	<link rel="stylesheet" type="text/css" href="${baseStylesUri}">
 	<link rel="stylesheet" type="text/css" href="${stylesUri}">
+	<script nonce="${nonce}">
+		window.ICONS_BASE_URI = "${iconsUri}"
+	</script>
 </head>
 <body>
 	<div id="root"></div>

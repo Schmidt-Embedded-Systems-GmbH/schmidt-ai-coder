@@ -477,7 +477,7 @@ function NewAgentForm() {
 		<div className="am-center-form">
 			<div
 				className="text-[var(--vscode-editor-foreground)]"
-				style={{ width: 48, height: 48, margin: "0 auto 16px auto" }}>
+				style={{ width: 160, height: 160, margin: "0 auto 24px auto" }}>
 				<SchmidtAILogo />
 			</div>
 			<div style={{ width: "100%", maxWidth: "100%", minWidth: "280px" }}>
