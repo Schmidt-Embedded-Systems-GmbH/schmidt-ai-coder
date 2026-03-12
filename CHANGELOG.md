@@ -4,6 +4,7 @@
 
 ### Minor Changes
 
+- Integrate Documentation Server and state of the AI-Coder at EW
 - MCU Specs MCP server for datasheet ingestion and search
 - Qdrant settings UI for MCU Specs configuration
 - Agent Manager logo rendering and sizing improvements
